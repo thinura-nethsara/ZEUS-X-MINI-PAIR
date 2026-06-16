@@ -33,11 +33,25 @@ router.get("/", async (req, res) => {
     return res.status(400).json({ error: "Number is required" });
   }
 
+  let pairSuccessful = false;
+  let pairAttempts = 0;
+  const maxAttempts = 3;
+
   async function RobinPair() {
+    if (pairAttempts >= maxAttempts) {
+      console.log("❌ Max pairing attempts reached");
+      if (!res.headersSent) {
+        await res.status(500).json({ error: "Failed to pair after multiple attempts" });
+      }
+      return;
+    }
+
+    pairAttempts++;
+    console.log(`🔄 Pairing attempt ${pairAttempts}/${maxAttempts}`);
+    
     const { state, saveCreds } = await useMultiFileAuthState(`./session`);
     
     try {
-      // Get latest Baileys version
       const { version } = await fetchLatestBaileysVersion();
       console.log(`Using Baileys version: ${version}`);
 
@@ -54,18 +68,23 @@ router.get("/", async (req, res) => {
         browser: Browsers.macOS("Safari"),
         version: version,
         markOnlineOnConnect: false,
-        connectTimeoutMs: 60000,
-        defaultQueryTimeoutMs: 60000,
-        keepAliveIntervalMs: 10000,
+        connectTimeoutMs: 30000,
+        defaultQueryTimeoutMs: 30000,
+        keepAliveIntervalMs: 15000,
+        syncFullHistory: false,
+        patchWhatsappMd: true,
       });
 
       // Handle connection events
       RobinPairWeb.ev.on("connection.update", async (s) => {
         const { connection, lastDisconnect } = s;
         
-        if (connection === "open") {
+        if (connection === "open" && !pairSuccessful) {
+          pairSuccessful = true;
+          console.log("✅ Connection opened successfully!");
+          
           try {
-            await delay(5000);
+            await delay(3000);
             const auth_path = "./session/creds.json";
             
             if (fs.existsSync(auth_path)) {
@@ -95,27 +114,32 @@ router.get("/", async (req, res) => {
 
 > ඔබේ දත්ත අපගේ Database එකේ ආරක්ෂිතව තැන්පත් කරන ලදී.
 
-*📢 Join our channel:*
-https://whatsapp.com/channel/0029VbBc42s84OmJ3V1RKd2B
-
 *ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴢᴀɴᴛᴀ ᴏꜰᴄ* 🧬`;
 
               await RobinPairWeb.sendMessage(user_jid, { text: success_msg });
+              console.log("✅ Success message sent!");
               
-              await delay(2000);
+              await delay(3000);
               removeFile("./session");
               console.log("♻️ Cleanup Done");
-              process.exit(0);
+              
+              // Successfully exit
+              setTimeout(() => {
+                process.exit(0);
+              }, 2000);
             }
           } catch (e) {
-            console.error("❌ Error in connection.open:", e);
+            console.error("❌ Error sending message:", e);
           }
         } else if (connection === "close") {
           const statusCode = lastDisconnect?.error?.output?.statusCode;
-          if (statusCode !== 401) {
-            console.log("Connection closed, reconnecting...");
+          if (statusCode !== 401 && !pairSuccessful) {
+            console.log(`Connection closed (${statusCode}), reconnecting...`);
             await delay(5000);
             RobinPair();
+          } else if (statusCode === 401) {
+            console.log("❌ Unauthorized - Invalid session");
+            removeFile("./session");
           }
         }
       });
@@ -130,26 +154,25 @@ https://whatsapp.com/channel/0029VbBc42s84OmJ3V1RKd2B
           await res.send({ code });
         }
         console.log(`✅ Pairing code sent to ${num}`);
+        
+        // Save creds on update
+        RobinPairWeb.ev.on("creds.update", saveCreds);
+        
       } catch (pairError) {
-        console.error("Pairing error:", pairError);
+        console.error("❌ Pairing error:", pairError.message);
         if (!res.headersSent) {
           await res.status(500).json({ 
-            error: "Failed to get pairing code. Please try again.",
+            error: "Failed to get pairing code",
             details: pairError.message 
           });
         }
       }
 
-      // Save creds on update
-      RobinPairWeb.ev.on("creds.update", saveCreds);
-
     } catch (err) {
-      console.error("Service Error:", err);
-      if (!res.headersSent) {
+      console.error("❌ Service Error:", err.message);
+      if (!res.headersSent && pairAttempts >= maxAttempts) {
         await res.status(500).json({ error: "Service error. Please try again." });
       }
-      await delay(5000);
-      RobinPair();
     }
   }
 
