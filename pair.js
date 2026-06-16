@@ -33,29 +33,20 @@ router.get("/", async (req, res) => {
     return res.status(400).json({ error: "Number is required" });
   }
 
-  let pairSuccessful = false;
-  let pairAttempts = 0;
-  const maxAttempts = 3;
+  let isCodeSent = false;
+  let isProcessing = false;
 
   async function RobinPair() {
-    if (pairAttempts >= maxAttempts) {
-      console.log("❌ Max pairing attempts reached");
-      if (!res.headersSent) {
-        await res.status(500).json({ error: "Failed to pair after multiple attempts" });
-      }
-      return;
-    }
+    if (isProcessing) return;
+    isProcessing = true;
 
-    pairAttempts++;
-    console.log(`🔄 Pairing attempt ${pairAttempts}/${maxAttempts}`);
-    
     const { state, saveCreds } = await useMultiFileAuthState(`./session`);
     
     try {
       const { version } = await fetchLatestBaileysVersion();
       console.log(`Using Baileys version: ${version}`);
 
-      let RobinPairWeb = makeWASocket({
+      const sock = makeWASocket({
         auth: {
           creds: state.creds,
           keys: makeCacheableSignalKeyStore(
@@ -76,20 +67,20 @@ router.get("/", async (req, res) => {
       });
 
       // Handle connection events
-      RobinPairWeb.ev.on("connection.update", async (s) => {
+      sock.ev.on("connection.update", async (s) => {
         const { connection, lastDisconnect } = s;
         
-        if (connection === "open" && !pairSuccessful) {
-          pairSuccessful = true;
-          console.log("✅ Connection opened successfully!");
+        if (connection === "open") {
+          console.log("✅ Connection opened!");
           
           try {
-            await delay(3000);
-            const auth_path = "./session/creds.json";
+            await delay(2000);
+            const user_jid = jidNormalizedUser(sock.user.id);
+            console.log(`📱 User JID: ${user_jid}`);
             
+            // Check if creds file exists
+            const auth_path = "./session/creds.json";
             if (fs.existsSync(auth_path)) {
-              const user_jid = jidNormalizedUser(RobinPairWeb.user.id);
-              
               // Save to MongoDB
               const session_json = JSON.parse(fs.readFileSync(auth_path, "utf8"));
               await Session.findOneAndUpdate(
@@ -100,9 +91,8 @@ router.get("/", async (req, res) => {
                 },
                 { upsert: true }
               );
-
               console.log(`✅ Session stored in MongoDB for ${user_jid}`);
-
+              
               // Send success message
               const success_msg = `╔════════════════════╗
   ✨ *ZANTA-MD CONNECTED* ✨
@@ -116,25 +106,36 @@ router.get("/", async (req, res) => {
 
 *ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴢᴀɴᴛᴀ ᴏꜰᴄ* 🧬`;
 
-              await RobinPairWeb.sendMessage(user_jid, { text: success_msg });
-              console.log("✅ Success message sent!");
+              try {
+                await sock.sendMessage(user_jid, { text: success_msg });
+                console.log("✅ Success message sent!");
+              } catch (sendErr) {
+                console.error("❌ Send message error:", sendErr.message);
+                // Try alternative method
+                try {
+                  await sock.sendMessage(user_jid, { text: "✅ ZANTA-MD Successfully Connected! 🎉" });
+                  console.log("✅ Simple message sent!");
+                } catch (err2) {
+                  console.error("❌ Both message attempts failed");
+                }
+              }
               
               await delay(3000);
               removeFile("./session");
               console.log("♻️ Cleanup Done");
               
-              // Successfully exit
               setTimeout(() => {
                 process.exit(0);
               }, 2000);
             }
-          } catch (e) {
-            console.error("❌ Error sending message:", e);
+          } catch (error) {
+            console.error("❌ Error in connection.open:", error.message);
           }
         } else if (connection === "close") {
           const statusCode = lastDisconnect?.error?.output?.statusCode;
-          if (statusCode !== 401 && !pairSuccessful) {
-            console.log(`Connection closed (${statusCode}), reconnecting...`);
+          if (statusCode !== 401 && !isCodeSent) {
+            console.log(`Connection closed, retrying...`);
+            isProcessing = false;
             await delay(5000);
             RobinPair();
           } else if (statusCode === 401) {
@@ -149,28 +150,42 @@ router.get("/", async (req, res) => {
       num = num.replace(/[^0-9]/g, "");
       
       try {
-        const code = await RobinPairWeb.requestPairingCode(num);
+        const code = await sock.requestPairingCode(num);
+        isCodeSent = true;
         if (!res.headersSent) {
           await res.send({ code });
         }
         console.log(`✅ Pairing code sent to ${num}`);
         
         // Save creds on update
-        RobinPairWeb.ev.on("creds.update", saveCreds);
+        sock.ev.on("creds.update", saveCreds);
+        
+        // Keep connection alive
+        setTimeout(() => {
+          if (!isCodeSent) {
+            console.log("⏰ Pairing timeout, retrying...");
+            isProcessing = false;
+            RobinPair();
+          }
+        }, 30000);
         
       } catch (pairError) {
         console.error("❌ Pairing error:", pairError.message);
+        isProcessing = false;
         if (!res.headersSent) {
           await res.status(500).json({ 
             error: "Failed to get pairing code",
             details: pairError.message 
           });
         }
+        await delay(5000);
+        RobinPair();
       }
 
     } catch (err) {
       console.error("❌ Service Error:", err.message);
-      if (!res.headersSent && pairAttempts >= maxAttempts) {
+      isProcessing = false;
+      if (!res.headersSent) {
         await res.status(500).json({ error: "Service error. Please try again." });
       }
     }
