@@ -1,6 +1,5 @@
 const express = require("express");
 const fs = require("fs");
-const { exec } = require("child_process");
 const mongoose = require("mongoose");
 let router = express.Router();
 const pino = require("pino");
@@ -11,6 +10,7 @@ const {
   makeCacheableSignalKeyStore,
   Browsers,
   jidNormalizedUser,
+  fetchLatestBaileysVersion,
 } = require("@whiskeysockets/baileys");
 
 // MongoDB Session Schema
@@ -21,7 +21,6 @@ const SessionSchema = new mongoose.Schema({
 });
 const Session = mongoose.models.Session || mongoose.model("Session", SessionSchema);
 
-// ✅ බලෙන්ම මකන්න පුළුවන් වෙන්න හදපු removeFile එක
 function removeFile(FilePath) {
   if (!fs.existsSync(FilePath)) return false;
   fs.rmSync(FilePath, { recursive: true, force: true });
@@ -29,10 +28,19 @@ function removeFile(FilePath) {
 
 router.get("/", async (req, res) => {
   let num = req.query.number;
+  
+  if (!num) {
+    return res.status(400).json({ error: "Number is required" });
+  }
+
   async function RobinPair() {
-    // එක් එක් රික්වෙස්ට් එකට ෆයිල් එකක් හැදෙනවා
     const { state, saveCreds } = await useMultiFileAuthState(`./session`);
+    
     try {
+      // Get latest Baileys version
+      const { version } = await fetchLatestBaileysVersion();
+      console.log(`Using Baileys version: ${version}`);
+
       let RobinPairWeb = makeWASocket({
         auth: {
           creds: state.creds,
@@ -43,86 +51,108 @@ router.get("/", async (req, res) => {
         },
         printQRInTerminal: false,
         logger: pino({ level: "fatal" }).child({ level: "fatal" }),
-        browser: Browsers.macOS("Safari"), // ඔයා මුලින් දුන්න එකමයි
+        browser: Browsers.macOS("Safari"),
+        version: version,
+        markOnlineOnConnect: false,
+        connectTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 60000,
+        keepAliveIntervalMs: 10000,
       });
 
-      if (!RobinPairWeb.authState.creds.registered) {
-        await delay(1500);
-        num = num.replace(/[^0-9]/g, "");
-        const code = await RobinPairWeb.requestPairingCode(num);
-        if (!res.headersSent) {
-          await res.send({ code });
-        }
-      }
-
-      RobinPairWeb.ev.on("creds.update", saveCreds);
+      // Handle connection events
       RobinPairWeb.ev.on("connection.update", async (s) => {
         const { connection, lastDisconnect } = s;
+        
         if (connection === "open") {
           try {
-            await delay(10000);
+            await delay(5000);
             const auth_path = "./session/creds.json";
-            const user_jid = jidNormalizedUser(RobinPairWeb.user.id);
+            
+            if (fs.existsSync(auth_path)) {
+              const user_jid = jidNormalizedUser(RobinPairWeb.user.id);
+              
+              // Save to MongoDB
+              const session_json = JSON.parse(fs.readFileSync(auth_path, "utf8"));
+              await Session.findOneAndUpdate(
+                { number: user_jid },
+                {
+                  number: user_jid,
+                  creds: session_json
+                },
+                { upsert: true }
+              );
 
-            // 1. MongoDB එකට සේව් කිරීම
-            const session_json = JSON.parse(fs.readFileSync(auth_path, "utf8"));
-            await Session.findOneAndUpdate(
-              { number: user_jid },
-              {
-                number: user_jid,
-                creds: session_json
-              },
-              { upsert: true }
-            );
+              console.log(`✅ Session stored in MongoDB for ${user_jid}`);
 
-            console.log(`✅ Session securely stored in MongoDB for ${user_jid}`);
-
-            // 2. මැසේජ් එක (Plain Text Only - Error නොවී යන්න)
-            const success_msg = `╔════════════════════╗
-  ✨ *ZEUS CONNECTED* ✨
+              // Send success message
+              const success_msg = `╔════════════════════╗
+  ✨ *ZANTA-MD CONNECTED* ✨
 ╚════════════════════╝
 
 *🚀 Status:* Successfully Linked ✅
 *👤 User:* ${user_jid.split('@')[0]}
 *🗄️ Database:* MongoDB Secured 🔒
 
-> ඔබේ දත්ත අපගේ Database එකේ ආරක්ෂිතව තැන්පත් කරන ලදී. දැන් බොට් ස්වයංක්‍රීයව ක්‍රියාත්මක වනු ඇත, මද වේලාවක් රැදී සිටින්න.
+> ඔබේ දත්ත අපගේ Database එකේ ආරක්ෂිතව තැන්පත් කරන ලදී.
 
-*📢 Join our official channel for updates:*
-https://whatsapp.com/channel/0029VbC6sAYC6ZvlRtTuM005
+*📢 Join our channel:*
+https://whatsapp.com/channel/0029VbBc42s84OmJ3V1RKd2B
 
-*_𝐏𝐎𝐖𝐄𝐑𝐄𝐃 𝐁𝐘 𝐙𝐄𝐔𝐒 𝐈𝐍𝐂 </>_ 🇱🇰* 🧬`;
+*ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴢᴀɴᴛᴀ ᴏꜰᴄ* 🧬`;
 
-            // ❌ Image සහ Ad Card එක අයින් කළා, Text විතරක් යැවෙනවා
-            await RobinPairWeb.sendMessage(user_jid, { text: success_msg });
-
+              await RobinPairWeb.sendMessage(user_jid, { text: success_msg });
+              
+              await delay(2000);
+              removeFile("./session");
+              console.log("♻️ Cleanup Done");
+              process.exit(0);
+            }
           } catch (e) {
-            console.error("❌ Database or Messaging Error:", e);
-          } finally {
-            // 3. Cleanup & Restart
-            await delay(2000);
-            removeFile("./session");
-            console.log("♻️ Cleanup Done: Local session files cleared.");
-            
-            // 🚀 Render වලදී "Waiting" වෙන්නේ නැතුව ඉන්න process එක Restart කරනවා
-            process.exit(0); 
+            console.error("❌ Error in connection.open:", e);
           }
-
-        } else if (
-          connection === "close" &&
-          lastDisconnect &&
-          lastDisconnect.error &&
-          lastDisconnect.error.output.statusCode !== 401
-        ) {
-          await delay(10000);
-          RobinPair();
+        } else if (connection === "close") {
+          const statusCode = lastDisconnect?.error?.output?.statusCode;
+          if (statusCode !== 401) {
+            console.log("Connection closed, reconnecting...");
+            await delay(5000);
+            RobinPair();
+          }
         }
       });
+
+      // Request pairing code
+      await delay(2000);
+      num = num.replace(/[^0-9]/g, "");
+      
+      try {
+        const code = await RobinPairWeb.requestPairingCode(num);
+        if (!res.headersSent) {
+          await res.send({ code });
+        }
+        console.log(`✅ Pairing code sent to ${num}`);
+      } catch (pairError) {
+        console.error("Pairing error:", pairError);
+        if (!res.headersSent) {
+          await res.status(500).json({ 
+            error: "Failed to get pairing code. Please try again.",
+            details: pairError.message 
+          });
+        }
+      }
+
+      // Save creds on update
+      RobinPairWeb.ev.on("creds.update", saveCreds);
+
     } catch (err) {
-      console.log("Service Error:", err);
+      console.error("Service Error:", err);
+      if (!res.headersSent) {
+        await res.status(500).json({ error: "Service error. Please try again." });
+      }
+      await delay(5000);
       RobinPair();
     }
   }
+
   return await RobinPair();
 });
 
