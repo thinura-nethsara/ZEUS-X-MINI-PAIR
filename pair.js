@@ -11,6 +11,7 @@ const {
   Browsers,
   jidNormalizedUser,
   fetchLatestBaileysVersion,
+  proto,
 } = require("@whiskeysockets/baileys");
 
 // MongoDB Session Schema
@@ -26,6 +27,12 @@ function removeFile(FilePath) {
   fs.rmSync(FilePath, { recursive: true, force: true });
 }
 
+// Clean session folder before start
+if (fs.existsSync("./session")) {
+  removeFile("./session");
+  console.log("🧹 Cleaned old session");
+}
+
 router.get("/", async (req, res) => {
   let num = req.query.number;
   
@@ -33,68 +40,71 @@ router.get("/", async (req, res) => {
     return res.status(400).json({ error: "Number is required" });
   }
 
-  let isCodeSent = false;
-  let isProcessing = false;
+  // Format number correctly
+  num = num.replace(/[^0-9]/g, "");
+  if (!num.startsWith("94")) {
+    num = "94" + num;
+  }
+  console.log(`📱 Formatted number: ${num}`);
 
-  async function RobinPair() {
-    if (isProcessing) return;
-    isProcessing = true;
+  let pairingCode = null;
+  let isLinked = false;
 
+  try {
     const { state, saveCreds } = await useMultiFileAuthState(`./session`);
+    const { version } = await fetchLatestBaileysVersion();
     
-    try {
-      const { version } = await fetchLatestBaileysVersion();
-      console.log(`Using Baileys version: ${version}`);
+    console.log(`📡 Baileys version: ${version.join('.')}`);
 
-      const sock = makeWASocket({
-        auth: {
-          creds: state.creds,
-          keys: makeCacheableSignalKeyStore(
-            state.keys,
-            pino({ level: "fatal" }).child({ level: "fatal" })
-          ),
-        },
-        printQRInTerminal: false,
-        logger: pino({ level: "fatal" }).child({ level: "fatal" }),
-        browser: Browsers.macOS("Safari"),
-        version: version,
-        markOnlineOnConnect: false,
-        connectTimeoutMs: 30000,
-        defaultQueryTimeoutMs: 30000,
-        keepAliveIntervalMs: 15000,
-        syncFullHistory: false,
-        patchWhatsappMd: true,
-      });
+    const sock = makeWASocket({
+      auth: {
+        creds: state.creds,
+        keys: makeCacheableSignalKeyStore(
+          state.keys,
+          pino({ level: "silent" })
+        ),
+      },
+      printQRInTerminal: false,
+      logger: pino({ level: "silent" }),
+      browser: ["ZANTA-MD", "Chrome", "120.0.0.0"],
+      version: version,
+      connectTimeoutMs: 60000,
+      defaultQueryTimeoutMs: 60000,
+      keepAliveIntervalMs: 30000,
+      syncFullHistory: false,
+      patchWhatsappMd: true,
+      markOnlineOnConnect: true,
+    });
 
-      // Handle connection events
-      sock.ev.on("connection.update", async (s) => {
-        const { connection, lastDisconnect } = s;
+    // Handle connection updates
+    sock.ev.on("connection.update", async (s) => {
+      const { connection, lastDisconnect } = s;
+      
+      if (connection === "open") {
+        console.log("✅ Connection opened successfully!");
+        isLinked = true;
         
-        if (connection === "open") {
-          console.log("✅ Connection opened!");
+        try {
+          await delay(3000);
+          const user_jid = jidNormalizedUser(sock.user.id);
+          console.log(`👤 User JID: ${user_jid}`);
           
-          try {
-            await delay(2000);
-            const user_jid = jidNormalizedUser(sock.user.id);
-            console.log(`📱 User JID: ${user_jid}`);
+          // Save session to MongoDB
+          const auth_path = "./session/creds.json";
+          if (fs.existsSync(auth_path)) {
+            const session_json = JSON.parse(fs.readFileSync(auth_path, "utf8"));
+            await Session.findOneAndUpdate(
+              { number: user_jid },
+              {
+                number: user_jid,
+                creds: session_json
+              },
+              { upsert: true }
+            );
+            console.log(`✅ Session saved to MongoDB for ${user_jid}`);
             
-            // Check if creds file exists
-            const auth_path = "./session/creds.json";
-            if (fs.existsSync(auth_path)) {
-              // Save to MongoDB
-              const session_json = JSON.parse(fs.readFileSync(auth_path, "utf8"));
-              await Session.findOneAndUpdate(
-                { number: user_jid },
-                {
-                  number: user_jid,
-                  creds: session_json
-                },
-                { upsert: true }
-              );
-              console.log(`✅ Session stored in MongoDB for ${user_jid}`);
-              
-              // Send success message
-              const success_msg = `╔════════════════════╗
+            // Send welcome message
+            const welcomeMsg = `╔════════════════════╗
   ✨ *ZANTA-MD CONNECTED* ✨
 ╚════════════════════╝
 
@@ -106,92 +116,89 @@ router.get("/", async (req, res) => {
 
 *ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴢᴀɴᴛᴀ ᴏꜰᴄ* 🧬`;
 
-              try {
-                await sock.sendMessage(user_jid, { text: success_msg });
-                console.log("✅ Success message sent!");
-              } catch (sendErr) {
-                console.error("❌ Send message error:", sendErr.message);
-                // Try alternative method
-                try {
-                  await sock.sendMessage(user_jid, { text: "✅ ZANTA-MD Successfully Connected! 🎉" });
-                  console.log("✅ Simple message sent!");
-                } catch (err2) {
-                  console.error("❌ Both message attempts failed");
-                }
-              }
-              
-              await delay(3000);
-              removeFile("./session");
-              console.log("♻️ Cleanup Done");
-              
-              setTimeout(() => {
-                process.exit(0);
-              }, 2000);
+            try {
+              await sock.sendMessage(user_jid, { text: welcomeMsg });
+              console.log("✅ Welcome message sent!");
+            } catch (err) {
+              console.log("⚠️ Could not send welcome message:", err.message);
             }
-          } catch (error) {
-            console.error("❌ Error in connection.open:", error.message);
-          }
-        } else if (connection === "close") {
-          const statusCode = lastDisconnect?.error?.output?.statusCode;
-          if (statusCode !== 401 && !isCodeSent) {
-            console.log(`Connection closed, retrying...`);
-            isProcessing = false;
-            await delay(5000);
-            RobinPair();
-          } else if (statusCode === 401) {
-            console.log("❌ Unauthorized - Invalid session");
+            
+            await delay(2000);
             removeFile("./session");
+            console.log("🧹 Session cleaned up");
+            
+            setTimeout(() => {
+              process.exit(0);
+            }, 3000);
           }
+        } catch (err) {
+          console.error("❌ Error in connection.open:", err.message);
         }
-      });
+      } else if (connection === "close") {
+        const statusCode = lastDisconnect?.error?.output?.statusCode;
+        console.log(`🔴 Connection closed with code: ${statusCode}`);
+        
+        if (statusCode === 401) {
+          console.log("❌ Unauthorized - Deleting session");
+          removeFile("./session");
+        } else if (!isLinked) {
+          console.log("🔄 Retrying connection...");
+          await delay(5000);
+          // Don't retry automatically, let user try again
+        }
+      }
+    });
 
-      // Request pairing code
-      await delay(2000);
-      num = num.replace(/[^0-9]/g, "");
+    // Request pairing code
+    console.log(`📱 Requesting pairing code for ${num}...`);
+    
+    try {
+      pairingCode = await sock.requestPairingCode(num);
+      console.log(`✅ Pairing code generated: ${pairingCode}`);
       
-      try {
-        const code = await sock.requestPairingCode(num);
-        isCodeSent = true;
-        if (!res.headersSent) {
-          await res.send({ code });
-        }
-        console.log(`✅ Pairing code sent to ${num}`);
-        
-        // Save creds on update
-        sock.ev.on("creds.update", saveCreds);
-        
-        // Keep connection alive
-        setTimeout(() => {
-          if (!isCodeSent) {
-            console.log("⏰ Pairing timeout, retrying...");
-            isProcessing = false;
-            RobinPair();
-          }
-        }, 30000);
-        
-      } catch (pairError) {
-        console.error("❌ Pairing error:", pairError.message);
-        isProcessing = false;
-        if (!res.headersSent) {
-          await res.status(500).json({ 
-            error: "Failed to get pairing code",
-            details: pairError.message 
-          });
-        }
-        await delay(5000);
-        RobinPair();
-      }
-
-    } catch (err) {
-      console.error("❌ Service Error:", err.message);
-      isProcessing = false;
+      // Send code to client
       if (!res.headersSent) {
-        await res.status(500).json({ error: "Service error. Please try again." });
+        await res.send({ 
+          code: pairingCode,
+          number: num,
+          message: "Enter this code in WhatsApp > Linked Devices > Link a Device > Enter Code"
+        });
       }
+      
+      // Save creds on update
+      sock.ev.on("creds.update", saveCreds);
+      
+      // Wait for pairing to complete
+      await delay(60000); // Wait 60 seconds for pairing
+      
+      if (!isLinked) {
+        console.log("⚠️ Pairing timeout - device not linked");
+        removeFile("./session");
+      }
+      
+    } catch (pairError) {
+      console.error("❌ Pairing error:", pairError.message);
+      
+      if (!res.headersSent) {
+        await res.status(500).json({ 
+          error: "Failed to get pairing code",
+          message: pairError.message,
+          suggestion: "Make sure the number is correct and try again"
+        });
+      }
+      
+      removeFile("./session");
+    }
+
+  } catch (err) {
+    console.error("❌ Service Error:", err.message);
+    if (!res.headersSent) {
+      await res.status(500).json({ 
+        error: "Service error",
+        message: err.message 
+      });
     }
   }
-
-  return await RobinPair();
 });
 
 module.exports = router;
