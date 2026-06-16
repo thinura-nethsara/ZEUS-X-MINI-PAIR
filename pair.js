@@ -79,19 +79,19 @@ router.get("/", async (req, res) => {
 
             // 2. මැසේජ් එක (Plain Text Only - Error නොවී යන්න)
             const success_msg = `╔════════════════════╗
-  ✨ *ZANTA-MD CONNECTED* ✨
+  ✨ *ZEUS CONNECTED* ✨
 ╚════════════════════╝
 
 *🚀 Status:* Successfully Linked ✅
 *👤 User:* ${user_jid.split('@')[0]}
 *🗄️ Database:* MongoDB Secured 🔒
 
-> ඔබේ දත්ත අපගේ Database එකේ ආරක්ෂිතව තැන්පත් කරන ලදී. දැන් බොට් ස්වයංක්‍රීයව ක්‍රියාත්මක වනු ඇත.
+> ඔබේ දත්ත අපගේ Database එකේ ආරක්ෂිතව තැන්පත් කරන ලදී. දැන් බොට් ස්වයංක්‍රීයව ක්‍රියාත්මක වනු ඇත, මද වේලාවක් රැදී සිටින්න.
 
 *📢 Join our official channel for updates:*
-https://whatsapp.com/channel/0029VbBc42s84OmJ3V1RKd2B
+https://whatsapp.com/channel/0029VbC6sAYC6ZvlRtTuM005
 
-*ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴢᴀɴᴛᴀ ᴏꜰᴄ* 🧬`;
+*_𝐏𝐎𝐖𝐄𝐑𝐄𝐃 𝐁𝐘 𝐙𝐄𝐔𝐒 𝐈𝐍𝐂 </>_ 🇱🇰* 🧬`;
 
             // ❌ Image සහ Ad Card එක අයින් කළා, Text විතරක් යැවෙනවා
             await RobinPairWeb.sendMessage(user_jid, { text: success_msg });
