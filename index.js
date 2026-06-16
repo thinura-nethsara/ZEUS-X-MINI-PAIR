@@ -5,13 +5,10 @@ const mongoose = require('mongoose');
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-
+// ✅ MongoDB Connection - Direct URL (No deprecated options)
 const MONGODB_URL = "mongodb+srv://Angle:99999978666@cluster0.ynt3dwp.mongodb.net/";
 
-mongoose.connect(MONGODB_URL, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-})
+mongoose.connect(MONGODB_URL)
 .then(() => console.log('✅ MongoDB Connected Successfully'))
 .catch(err => console.error('❌ MongoDB Connection Error:', err));
 
@@ -26,5 +23,5 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 ZEUS-X-MD Web Server started on port ${PORT}`);
+    console.log(`🚀 ZEUS X Web Server started on port ${PORT}`);
 });
