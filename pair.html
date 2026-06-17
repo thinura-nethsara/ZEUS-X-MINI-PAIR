@@ -8,8 +8,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
-        body { background: #000; min-height: 100vh; display: flex; justify-content: center; align-items: center; position: relative; }
+        body { background: #000; height: 100vh; overflow: hidden; display: flex; justify-content: center; align-items: center; position: relative; }
 
+        /* ✨ Light Blue Space Background */
         .stars-container { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; 
             background: radial-gradient(circle at center, #0a1a2d 0%, #000000 100%); 
@@ -17,12 +18,13 @@
         .star { position: absolute; background: #b6e3ff; border-radius: 50%; opacity: 0.6; animation: move linear infinite; }
         @keyframes move { from { transform: translateY(100vh); opacity: 0; } to { transform: translateY(-10vh); opacity: 0.8; } }
 
+        /* 💎 Ultra Glass Box */
         .glass-box {
             position: relative;
             z-index: 10;
             width: 90%;
-            max-width: 450px;
-            padding: 40px 30px;
+            max-width: 400px;
+            padding: 50px 30px;
             background: rgba(0, 212, 255, 0.03); 
             backdrop-filter: blur(25px);
             -webkit-backdrop-filter: blur(25px);
@@ -33,26 +35,21 @@
             color: #fff;
         }
 
-        .logo {
-            font-size: 3rem;
-            color: #00d4ff;
-            text-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
-            margin-bottom: 5px;
-        }
-
         h2 {
-            font-size: 1.8rem;
+            font-size: 2rem;
             color: #00d4ff;
             text-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+            margin-bottom: 10px;
             font-weight: 600;
         }
 
-        p { font-size: 0.85rem; color: rgba(255, 255, 255, 0.6); margin: 10px 0 20px; }
+        p { font-size: 0.85rem; color: rgba(255, 255, 255, 0.6); margin-bottom: 25px; }
 
+        /* ⌨️ Input Styling */
         input {
             width: 100%;
             padding: 15px;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             border: 1px solid rgba(0, 212, 255, 0.3);
             border-radius: 15px;
             background: rgba(255, 255, 255, 0.05);
@@ -68,6 +65,7 @@
             background: rgba(255, 255, 255, 0.1);
         }
 
+        /* 🔘 Button Styling */
         button {
             width: 100%;
             padding: 15px;
@@ -84,34 +82,23 @@
         button:hover {
             transform: scale(1.03);
             box-shadow: 0 0 25px rgba(0, 212, 255, 0.6);
-        }
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
+            letter-spacing: 1px;
         }
 
+        /* 🔢 Code Display */
         #code {
-            margin-top: 20px;
-            font-size: 2.5rem;
-            font-weight: 700;
-            color: #00d4ff;
-            text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
-            letter-spacing: 8px;
-            min-height: 50px;
-            word-break: break-all;
-        }
-
-        #status {
-            margin-top: 10px;
-            font-size: 0.8rem;
-            color: rgba(255, 255, 255, 0.5);
-            min-height: 20px;
+            margin-top: 25px;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #fff;
+            text-shadow: 0 0 10px #00d4ff;
+            letter-spacing: 5px;
+            min-height: 40px;
         }
 
         .home-link {
             display: inline-block;
-            margin-top: 25px;
+            margin-top: 30px;
             color: #00d4ff;
             text-decoration: none;
             font-size: 0.8rem;
@@ -121,18 +108,6 @@
         }
         .home-link:hover { opacity: 1; border-color: #00d4ff; }
 
-        .steps {
-            text-align: left;
-            font-size: 0.75rem;
-            color: rgba(255, 255, 255, 0.4);
-            margin-top: 15px;
-            padding: 10px;
-            background: rgba(255,255,255,0.03);
-            border-radius: 10px;
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-        .steps ol { padding-left: 20px; }
-        .steps li { margin: 5px 0; }
     </style>
 </head>
 <body>
@@ -140,30 +115,24 @@
     <div class="stars-container" id="stars"></div>
 
     <div class="glass-box">
-        <div class="logo">⚡</div>
         <h2>ZANTA-MD</h2>
-        <p>Enter your WhatsApp number</p>
+        <p>Enter your number with country code</p>
         
-        <input type="text" id="num" placeholder="e.g. 94743404814" value="94771735026">
+        <input type="number" id="num" placeholder="e.g. 94743404814">
         
-        <button id="pairBtn" onclick="getPair()">🔗 LINK DEVICE</button>
+        <button onclick="getPair()">GET PAIR CODE</button>
         
         <div id="code"></div>
-        <div id="status">Enter your number and click Link Device</div>
-
-        <div class="steps">
-            <ol>
-                <li>Open WhatsApp on your phone</li>
-                <li>Go to Settings → Linked Devices</li>
-                <li>Tap "Link a Device" → "Link with phone number"</li>
-                <li>Enter the 8-digit code shown here</li>
-            </ol>
-        </div>
 
         <a href="index.html" class="home-link">← Back to Home</a>
     </div>
 
+    <audio id="bgMusic" loop>
+        <source src="https://files.catbox.moe/5zx7hg.mp3" type="audio/mpeg">
+    </audio>
+
     <script>
+        // Stars Logic
         const starsContainer = document.getElementById('stars');
         for (let i = 0; i < 80; i++) {
             const star = document.createElement('div');
@@ -176,57 +145,32 @@
             starsContainer.appendChild(star);
         }
 
+        // Pairing Logic (As per your request)
         async function getPair() {
             const num = document.getElementById('num').value;
             const codeDiv = document.getElementById('code');
-            const statusDiv = document.getElementById('status');
-            const btn = document.getElementById('pairBtn');
+            if(!num) return alert("Please enter your number!");
             
-            if(!num) {
-                statusDiv.innerText = "⚠️ Please enter your number!";
-                return;
-            }
-            
-            btn.disabled = true;
-            btn.innerText = "⏳ WAITING...";
-            codeDiv.innerText = "";
-            statusDiv.innerText = "⏳ Requesting pairing code...";
-            statusDiv.style.color = "#ffaa00";
+            codeDiv.innerText = "WAITING...";
+            codeDiv.style.fontSize = "1rem";
+            codeDiv.style.letterSpacing = "1px";
 
             try {
                 const res = await fetch(`/code?number=${num}`);
                 const data = await res.json();
                 
-                if(data.code) {
-                    codeDiv.innerText = data.code;
-                    statusDiv.innerText = "✅ Enter this code in WhatsApp to link your device";
-                    statusDiv.style.color = "#00ff88";
-                    btn.innerText = "✅ CODE GENERATED";
-                    
-                    // Auto refresh after 2 minutes
-                    setTimeout(() => {
-                        statusDiv.innerText = "⏰ Code expired. Click again to get new code";
-                        statusDiv.style.color = "#ff4444";
-                        btn.disabled = false;
-                        btn.innerText = "🔗 LINK DEVICE";
-                        codeDiv.innerText = "";
-                    }, 120000);
-                    
-                } else {
-                    codeDiv.innerText = "❌ ERROR";
-                    statusDiv.innerText = data.error || data.message || "Failed to get code";
-                    statusDiv.style.color = "#ff4444";
-                    btn.disabled = false;
-                    btn.innerText = "🔗 LINK DEVICE";
-                }
+                codeDiv.style.fontSize = "1.8rem";
+                codeDiv.style.letterSpacing = "5px";
+                codeDiv.innerText = data.code || "ERROR";
             } catch (error) {
-                codeDiv.innerText = "❌ ERROR";
-                statusDiv.innerText = "Connection error. Please try again.";
-                statusDiv.style.color = "#ff4444";
-                btn.disabled = false;
-                btn.innerText = "🔗 LINK DEVICE";
+                codeDiv.innerText = "ERROR";
             }
         }
+
+        // Music Trigger
+        window.addEventListener('click', () => {
+            document.getElementById('bgMusic').play();
+        }, { once: true });
     </script>
 </body>
 </html>
