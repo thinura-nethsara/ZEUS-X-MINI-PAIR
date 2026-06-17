@@ -46,7 +46,7 @@ router.get("/", async (req, res) => {
     
     const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
     
-    // ✅ Modified Baileys configuration
+    // ✅ Create socket
     const sock = makeWASocket({
       auth: {
         creds: state.creds,
@@ -58,7 +58,6 @@ router.get("/", async (req, res) => {
       printQRInTerminal: false,
       logger: pino({ level: "silent" }),
       browser: ["ZANTA-MD", "Chrome", "120.0.0.0"],
-      // ✅ Important: These options help with connection
       connectTimeoutMs: 60000,
       defaultQueryTimeoutMs: 60000,
       keepAliveIntervalMs: 30000,
@@ -70,106 +69,95 @@ router.get("/", async (req, res) => {
       markOnlineOnConnect: false,
     });
 
-    // ✅ Better connection handling with retry
+    // ✅ Connection handling with sock.ev.on() (not once)
     let connectionEstablished = false;
-    let attempts = 0;
-    const maxAttempts = 3;
+    let connectionError = null;
 
-    while (!connectionEstablished && attempts < maxAttempts) {
-      attempts++;
-      console.log(`🔄 Connection attempt ${attempts}/${maxAttempts}`);
+    // Listen for connection updates
+    sock.ev.on("connection.update", (update) => {
+      const { connection, lastDisconnect } = update;
+      console.log(`📡 Connection status: ${connection}`);
       
-      try {
-        await new Promise((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            reject(new Error("Connection timeout"));
-          }, 45000);
+      if (connection === "open") {
+        connectionEstablished = true;
+        console.log("✅ Connection established successfully");
+      } else if (connection === "close") {
+        const error = lastDisconnect?.error;
+        connectionError = error || new Error("Connection closed");
+        console.log(`❌ Connection closed: ${connectionError.message}`);
+      }
+    });
 
-          sock.ev.once("connection.update", (update) => {
-            const { connection, lastDisconnect } = update;
-            console.log(`📡 Connection status: ${connection}`);
-            
-            if (connection === "open") {
-              clearTimeout(timeout);
-              connectionEstablished = true;
-              resolve();
-            } else if (connection === "close") {
-              clearTimeout(timeout);
-              const error = lastDisconnect?.error;
-              if (error?.output?.statusCode === 401) {
-                reject(new Error("Unauthorized"));
-              } else {
-                reject(new Error("Connection closed"));
-              }
-            }
-          });
-        });
-      } catch (err) {
-        console.log(`⚠️ Attempt ${attempts} failed: ${err.message}`);
-        if (attempts >= maxAttempts) {
-          throw new Error(`Failed to connect after ${maxAttempts} attempts`);
-        }
-        await delay(2000);
-        // Recreate socket for new attempt
-        if (sock) {
-          sock.ev.removeAllListeners();
-        }
+    // ✅ Wait for connection with timeout
+    let waitTime = 0;
+    const maxWaitTime = 45000;
+    
+    while (!connectionEstablished && waitTime < maxWaitTime) {
+      await delay(1000);
+      waitTime += 1000;
+      if (waitTime % 5000 === 0) {
+        console.log(`⏳ Waiting for connection... ${waitTime/1000}s`);
       }
     }
 
     if (!connectionEstablished) {
-      throw new Error("Could not establish connection");
+      throw new Error("Connection timeout after 45 seconds");
     }
 
-    console.log("✅ Connection established successfully");
+    if (connectionError) {
+      throw connectionError;
+    }
 
-    // ✅ Request pairing code with proper handling
-    try {
-      const code = await sock.requestPairingCode(num);
-      console.log(`✅ Pairing code: ${code}`);
+    console.log("✅ Connection ready, requesting pairing code...");
 
-      // Send response immediately
-      await res.json({ 
-        success: true, 
-        code: code,
-        number: num 
-      });
+    // ✅ Request pairing code
+    const code = await sock.requestPairingCode(num);
+    console.log(`✅ Pairing code: ${code}`);
 
-      // ✅ Handle credentials
-      sock.ev.on("creds.update", saveCreds);
+    // Send response
+    await res.json({ 
+      success: true, 
+      code: code,
+      number: num 
+    });
 
-      // ✅ Wait for successful login
-      await new Promise((resolve) => {
-        const loginTimeout = setTimeout(() => {
-          console.log("⏰ Login timeout, continuing...");
-          resolve();
-        }, 90000);
+    // ✅ Handle credentials
+    sock.ev.on("creds.update", saveCreds);
 
-        sock.ev.on("connection.update", async (update) => {
-          const { connection } = update;
-          if (connection === "open" && sock.authState.creds.registered) {
-            clearTimeout(loginTimeout);
-            try {
-              const userJid = jidNormalizedUser(sock.user.id);
-              console.log(`✅ User connected: ${userJid}`);
-              
-              const authPath = `${sessionPath}/creds.json`;
-              if (fs.existsSync(authPath)) {
-                const sessionData = JSON.parse(fs.readFileSync(authPath, "utf8"));
-                
-                await Session.findOneAndUpdate(
-                  { number: userJid },
-                  {
-                    number: userJid,
-                    creds: sessionData,
-                    APP_ID: MY_APP_ID
-                  },
-                  { upsert: true }
-                );
-                
-                console.log(`✅ Session saved to MongoDB with APP_ID: ${MY_APP_ID}`);
-                
-                const msg = `╔════════════════════╗
+    // ✅ Wait for successful login
+    let loginCompleted = false;
+    let loginTimeout = setTimeout(() => {
+      console.log("⏰ Login timeout, continuing...");
+      loginCompleted = true;
+    }, 90000);
+
+    sock.ev.on("connection.update", async (update) => {
+      const { connection } = update;
+      if (connection === "open" && sock.authState.creds.registered && !loginCompleted) {
+        loginCompleted = true;
+        clearTimeout(loginTimeout);
+        
+        try {
+          const userJid = jidNormalizedUser(sock.user.id);
+          console.log(`✅ User connected: ${userJid}`);
+          
+          const authPath = `${sessionPath}/creds.json`;
+          if (fs.existsSync(authPath)) {
+            const sessionData = JSON.parse(fs.readFileSync(authPath, "utf8"));
+            
+            await Session.findOneAndUpdate(
+              { number: userJid },
+              {
+                number: userJid,
+                creds: sessionData,
+                APP_ID: MY_APP_ID
+              },
+              { upsert: true }
+            );
+            
+            console.log(`✅ Session saved to MongoDB with APP_ID: ${MY_APP_ID}`);
+            
+            const msg = `╔════════════════════╗
   ✨ *ZANTA-MD CONNECTED* ✨
 ╚════════════════════╝
 
@@ -181,24 +169,17 @@ router.get("/", async (req, res) => {
 
 *ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴢᴀɴᴛᴀ ᴏꜰᴄ* 🧬`;
 
-                await sock.sendMessage(userJid, { text: msg });
-              }
-            } catch (e) {
-              console.error("❌ Error:", e.message);
-            }
-            resolve();
+            await sock.sendMessage(userJid, { text: msg });
           }
-        });
-      });
-
-    } catch (pairError) {
-      console.error("❌ Pairing error:", pairError.message);
-      if (!res.headersSent) {
-        await res.status(500).json({ 
-          success: false, 
-          error: "Failed to get pairing code. Please try again." 
-        });
+        } catch (e) {
+          console.error("❌ Error saving session:", e.message);
+        }
       }
+    });
+
+    // Wait for login to complete or timeout
+    while (!loginCompleted) {
+      await delay(1000);
     }
 
     // Cleanup
