@@ -79,7 +79,7 @@ router.get("/", async (req, res) => {
 
             // 2. මැසේජ් එක (Plain Text Only - Error නොවී යන්න)
             const success_msg = `╔════════════════════╗
-  ✨ *ZANTA-MD CONNECTED* ✨
+   ZEUS X NOW ONLINE
 ╚════════════════════╝
 
 *🚀 Status:* Successfully Linked ✅
@@ -89,9 +89,9 @@ router.get("/", async (req, res) => {
 > ඔබේ දත්ත අපගේ Database එකේ ආරක්ෂිතව තැන්පත් කරන ලදී. දැන් බොට් ස්වයංක්‍රීයව ක්‍රියාත්මක වනු ඇත.
 
 *📢 Join our official channel for updates:*
-https://whatsapp.com/channel/0029VbBc42s84OmJ3V1RKd2B
+https://whatsapp.com/channel/0029VbCe8YW84OmKiJkDfk3o
 
-*ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴢᴀɴᴛᴀ ᴏꜰᴄ* 🧬`;
+𝐏𝐎𝐖𝐄𝐑𝐄𝐃 𝐁𝐘 𝐙𝐄𝐔𝐒 𝐈𝐍𝐂 </>`;
 
             // ❌ Image සහ Ad Card එක අයින් කළා, Text විතරක් යැවෙනවා
             await RobinPairWeb.sendMessage(user_jid, { text: success_msg });
