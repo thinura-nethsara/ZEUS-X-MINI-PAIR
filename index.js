@@ -3,7 +3,7 @@ const path = require('path');
 const bodyParser = require("body-parser");
 const mongoose = require('mongoose');
 const app = express();
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 5000;
 
 // ✅ MongoDB Connection - ඔබගේ URL එක සෘජුවම
 const MONGODB_URL = "mongodb+srv://Angle:99999978666@cluster0.ynt3dwp.mongodb.net/";
@@ -24,5 +24,5 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 ZANTA-MD Web Server started on port ${PORT}`);
+    console.log(`🚀 ZEUS X Web Server started on port ${PORT}`);
 });
