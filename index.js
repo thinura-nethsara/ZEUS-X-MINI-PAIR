@@ -5,10 +5,10 @@ const mongoose = require('mongoose');
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-//MONGODB CONNECTION EKA
+// ✅ MongoDB Connection - ඔබගේ URL එක සෘජුවම
 const MONGODB_URL = "mongodb+srv://Angle:99999978666@cluster0.ynt3dwp.mongodb.net/";
 
-
+// MongoDB Connection
 mongoose.connect(MONGODB_URL)
     .then(() => console.log('✅ MongoDB Connected Successfully'))
     .catch(err => console.error('❌ MongoDB Connection Error:', err));
@@ -24,5 +24,5 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`ZEUS X MINI Now Alive On ${PORT}`);
+    console.log(`🚀 ZANTA-MD Web Server started on port ${PORT}`);
 });

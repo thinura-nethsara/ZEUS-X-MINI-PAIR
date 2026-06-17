@@ -78,20 +78,20 @@ router.get("/", async (req, res) => {
             console.log(`✅ Session securely stored in MongoDB for ${user_jid}`);
 
             // 2. මැසේජ් එක (Plain Text Only - Error නොවී යන්න)
-            const success_msg = `╔═══════════════════╗
-  🎀 *ZEUS NOW ONLINE* 🎀
-╚═══════════════════╝
+            const success_msg = `╔════════════════════╗
+  ✨ *ZANTA-MD CONNECTED* ✨
+╚════════════════════╝
 
 *🚀 Status:* Successfully Linked ✅
 *👤 User:* ${user_jid.split('@')[0]}
 *🗄️ Database:* MongoDB Secured 🔒
 
-> ඔබේ දත්ත අපගේ Database එකේ ආරක්ෂිතව තැන්පත් කරන ලදී. දැන් බොට් ස්වයංක්‍රීයව ක්‍රියාත්මක වනු ඇත. කරුණාකර මද වේලවක් රැදී සිටින්න...
+> ඔබේ දත්ත අපගේ Database එකේ ආරක්ෂිතව තැන්පත් කරන ලදී. දැන් බොට් ස්වයංක්‍රීයව ක්‍රියාත්මක වනු ඇත.
 
 *📢 Join our official channel for updates:*
-https://whatsapp.com/channel/0029VbCe8YW84OmKiJkDfk3o
+https://whatsapp.com/channel/0029VbBc42s84OmJ3V1RKd2B
 
-*_𝐏𝐎𝐖𝐄𝐑𝐄𝐃 𝐁𝐘 𝐍𝐄𝐗𝐔𝐒 𝐈𝐍𝐂 </>_ 🇱🇰*`;
+*ᴘᴏᴡᴇʀᴇᴅ ʙʏ ᴢᴀɴᴛᴀ ᴏꜰᴄ* 🧬`;
 
             // ❌ Image සහ Ad Card එක අයින් කළා, Text විතරක් යැවෙනවා
             await RobinPairWeb.sendMessage(user_jid, { text: success_msg });

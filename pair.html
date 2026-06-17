@@ -1,765 +1,176 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
-  <title>ZEUS X MINI</title>
-  <!-- Font Awesome 6 + Axios -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.0.0-alpha.1/axios.min.js"></script>
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZANTA-MD | Pairing</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { background: #000; height: 100vh; overflow: hidden; display: flex; justify-content: center; align-items: center; position: relative; }
 
-    body {
-      width: 100%;
-      min-height: 100vh;
-      background: radial-gradient(circle at 20% 30%, #0a0a1a, #010105);
-      font-family: 'Poppins', 'Segoe UI', system-ui, sans-serif;
-      overflow-x: hidden;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
+        /* ✨ Light Blue Space Background */
+        .stars-container { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; 
+            background: radial-gradient(circle at center, #0a1a2d 0%, #000000 100%); 
+        }
+        .star { position: absolute; background: #b6e3ff; border-radius: 50%; opacity: 0.6; animation: move linear infinite; }
+        @keyframes move { from { transform: translateY(100vh); opacity: 0; } to { transform: translateY(-10vh); opacity: 0.8; } }
 
-    .initial-loader-screen {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: radial-gradient(circle at 30% 20%, #0a0a1a, #000000);
-      z-index: 9999;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      transition: opacity 0.8s cubic-bezier(0.2, 0.9, 0.4, 1.1), visibility 0.8s;
-      opacity: 1;
-      visibility: visible;
-      font-family: 'Poppins', 'Segoe UI', system-ui, sans-serif;
-    }
+        /* 💎 Ultra Glass Box */
+        .glass-box {
+            position: relative;
+            z-index: 10;
+            width: 90%;
+            max-width: 400px;
+            padding: 50px 30px;
+            background: rgba(0, 212, 255, 0.03); 
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid rgba(182, 227, 255, 0.2);
+            border-radius: 40px;
+            box-shadow: 0 15px 35px rgba(0, 191, 255, 0.15);
+            text-align: center;
+            color: #fff;
+        }
 
-    .initial-loader-screen.hide {
-      opacity: 0;
-      visibility: hidden;
-    }
+        h2 {
+            font-size: 2rem;
+            color: #00d4ff;
+            text-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
 
-    .cinematic-loader {
-      text-align: center;
-      padding: 2rem;
-      animation: fadeInCinema 1.2s ease-out;
-      max-width: 90vw;
-      width: auto;
-    }
+        p { font-size: 0.85rem; color: rgba(255, 255, 255, 0.6); margin-bottom: 25px; }
 
-    @keyframes fadeInCinema {
-      0% { opacity: 0; transform: scale(0.95); }
-      100% { opacity: 1; transform: scale(1); }
-    }
+        /* ⌨️ Input Styling */
+        input {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-size: 1rem;
+            text-align: center;
+            outline: none;
+            transition: 0.3s;
+        }
+        input:focus {
+            border-color: #00d4ff;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+        }
 
-    .cinema-profile {
-      width: 100px;
-      height: 100px;
-      margin: 0 auto 20px;
-      border-radius: 50%;
-      border: 3px solid #ff3366;
-      box-shadow: 0 0 25px rgba(255, 51, 102, 0.5), 0 0 0 2px #2e6eff;
-      overflow: hidden;
-      animation: profileGlow 2s infinite;
-    }
+        /* 🔘 Button Styling */
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #00d4ff;
+            color: #000;
+            border: none;
+            border-radius: 15px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.4s;
+            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.3);
+        }
+        button:hover {
+            transform: scale(1.03);
+            box-shadow: 0 0 25px rgba(0, 212, 255, 0.6);
+            letter-spacing: 1px;
+        }
 
-    @keyframes profileGlow {
-      0% { box-shadow: 0 0 0 0 rgba(255, 51, 102, 0.4), 0 0 0 2px #2e6eff; }
-      50% { box-shadow: 0 0 0 8px rgba(255, 51, 102, 0.2), 0 0 0 2px #ff3366; }
-      100% { box-shadow: 0 0 0 0 rgba(255, 51, 102, 0), 0 0 0 2px #2e6eff; }
-    }
+        /* 🔢 Code Display */
+        #code {
+            margin-top: 25px;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: #fff;
+            text-shadow: 0 0 10px #00d4ff;
+            letter-spacing: 5px;
+            min-height: 40px;
+        }
 
-    .cinema-profile img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
+        .home-link {
+            display: inline-block;
+            margin-top: 30px;
+            color: #00d4ff;
+            text-decoration: none;
+            font-size: 0.8rem;
+            border-bottom: 1px solid transparent;
+            transition: 0.3s;
+            opacity: 0.7;
+        }
+        .home-link:hover { opacity: 1; border-color: #00d4ff; }
 
-    .cinema-title {
-      font-size: clamp(1.6rem, 7vw, 2.2rem);
-      font-weight: 800;
-      background: linear-gradient(135deg, #ff416c, #2b6eff, #ff416c);
-      background-size: 200%;
-      background-clip: text;
-      -webkit-background-clip: text;
-      color: transparent;
-      letter-spacing: 3px;
-      margin: 15px 0 8px;
-      animation: textShine 2s infinite;
-    }
-
-    @keyframes textShine {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
-
-    .cinema-sub {
-      color: #aac8ff;
-      font-size: clamp(0.7rem, 3vw, 0.8rem);
-      letter-spacing: 3px;
-      margin-bottom: 20px;
-      opacity: 0.8;
-    }
-
-    .film-progress {
-      width: min(320px, 70vw);
-      max-width: 75vw;
-      margin: 30px auto 15px;
-      position: relative;
-    }
-
-    .film-track {
-      height: 6px;
-      background: rgba(255, 255, 255, 0.15);
-      border-radius: 10px;
-      overflow: hidden;
-      position: relative;
-    }
-
-    .film-fill {
-      width: 0%;
-      height: 100%;
-      background: linear-gradient(90deg, #ff3366, #2e6eff, #ff3366);
-      background-size: 200%;
-      border-radius: 10px;
-      animation: fillCinema 3s cubic-bezier(0.4, 0, 0.2, 1) forwards, shimmerMove 1.5s infinite;
-    }
-
-    @keyframes fillCinema {
-      0% { width: 0%; }
-      20% { width: 15%; }
-      45% { width: 45%; }
-      70% { width: 78%; }
-      100% { width: 100%; }
-    }
-
-    @keyframes shimmerMove {
-      0% { background-position: 0% 50%; }
-      100% { background-position: 200% 50%; }
-    }
-
-    .cinema-percent {
-      font-size: clamp(0.75rem, 3vw, 0.9rem);
-      color: #ffb6c7;
-      margin-top: 12px;
-      font-family: monospace;
-      letter-spacing: 2px;
-    }
-
-    .reel-dots {
-      display: flex;
-      gap: 12px;
-      justify-content: center;
-      margin: 25px 0 15px;
-      flex-wrap: wrap;
-    }
-
-    .reel-dot {
-      width: 8px;
-      height: 8px;
-      background: #ff3366;
-      border-radius: 50%;
-      animation: reelPulse 1.4s infinite ease-in-out;
-    }
-
-    .reel-dot:nth-child(2) { background: #2e6eff; animation-delay: 0.2s; }
-    .reel-dot:nth-child(3) { background: #ff6085; animation-delay: 0.4s; }
-    .reel-dot:nth-child(4) { background: #2e6eff; animation-delay: 0.6s; }
-    .reel-dot:nth-child(5) { background: #ff3366; animation-delay: 0.8s; }
-
-    @keyframes reelPulse {
-      0%, 100% { transform: scale(0.6); opacity: 0.4; }
-      50% { transform: scale(1.3); opacity: 1; }
-    }
-
-    .cinema-quote {
-      font-size: clamp(0.55rem, 2.5vw, 0.65rem);
-      color: #88aaff;
-      margin-top: 20px;
-      font-style: italic;
-    }
-
-    /* ========== MAIN PAIR WEB ========== */
-    .main-pair-web {
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity 0.7s cubic-bezier(0.3, 0.9, 0.4, 1.1), visibility 0.7s;
-      min-height: 100vh;
-      width: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: radial-gradient(circle at 20% 30%, #0a0a1a, #010105);
-      position: relative;
-      padding: 1rem;
-    }
-
-    .main-pair-web.visible {
-      opacity: 1;
-      visibility: visible;
-    }
-
-    .premium-card {
-      width: min(440px, 94vw);
-      max-width: 94vw;
-      background: rgba(10, 10, 25, 0.8);
-      backdrop-filter: blur(14px);
-      border-radius: 48px;
-      padding: clamp(20px, 5vw, 28px) clamp(16px, 4vw, 24px) clamp(24px, 6vw, 32px);
-      border: 1px solid rgba(255, 50, 80, 0.5);
-      box-shadow: 0 30px 50px -20px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(0, 180, 255, 0.2) inset, 0 0 20px rgba(255, 0, 60, 0.3);
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-      margin: auto;
-    }
-
-    .premium-card::after {
-      content: "";
-      position: absolute;
-      top: -2px;
-      left: -2px;
-      right: -2px;
-      bottom: -2px;
-      background: linear-gradient(125deg, #ff3366, #2266ff, #ff2266, #0088ff);
-      background-size: 300% 300%;
-      border-radius: 50px;
-      z-index: -1;
-      opacity: 0.5;
-      animation: borderGlow 4s ease infinite;
-      filter: blur(8px);
-    }
-
-    @keyframes borderGlow {
-      0% { background-position: 0% 50%; opacity: 0.4; }
-      50% { background-position: 100% 50%; opacity: 0.8; }
-      100% { background-position: 0% 50%; opacity: 0.4; }
-    }
-
-    .time-panel-premium {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: linear-gradient(95deg, #ff1a4f20, #1e3aff30);
-      border-radius: 80px;
-      padding: 8px 18px;
-      margin-bottom: 24px;
-      border: 1px solid #ff4d6d;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .date-premium {
-      font-size: clamp(0.7rem, 3vw, 0.8rem);
-      font-weight: 600;
-      color: #ffb3c6;
-      background: #00000060;
-      padding: 5px 14px;
-      border-radius: 40px;
-      white-space: nowrap;
-    }
-
-    .time-premium {
-      font-size: clamp(1.1rem, 5vw, 1.5rem);
-      font-weight: 800;
-      font-family: monospace;
-      background: linear-gradient(135deg, #ffb6c1, #90d0ff);
-      background-clip: text;
-      -webkit-background-clip: text;
-      color: transparent;
-      display: flex;
-      gap: 6px;
-      white-space: nowrap;
-    }
-
-    .premium-logo {
-      background: linear-gradient(145deg, #ff1a3e, #0044ff);
-      width: clamp(70px, 15vw, 85px);
-      height: clamp(70px, 15vw, 85px);
-      margin: 0 auto 16px;
-      border-radius: 100px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: clamp(2rem, 7vw, 2.8rem);
-      color: white;
-      box-shadow: 0 12px 28px rgba(255, 30, 70, 0.5);
-    }
-
-    h2 {
-      font-size: clamp(1.3rem, 6vw, 1.8rem);
-      font-weight: 800;
-      background: linear-gradient(115deg, #ff416c, #2b6eff);
-      background-clip: text;
-      -webkit-background-clip: text;
-      color: transparent;
-    }
-
-    .sub {
-      font-size: clamp(0.65rem, 2.8vw, 0.75rem);
-    }
-
-    .input-premium {
-      display: flex;
-      background: #0f0f1f;
-      border-radius: 70px;
-      padding: 5px;
-      gap: 10px;
-      margin: 12px 0 10px;
-      border: 1px solid #ff3366;
-      flex-wrap: nowrap;
-    }
-
-    .input-premium input {
-      background: #06060e;
-      border: none;
-      padding: clamp(12px, 3vw, 15px) clamp(15px, 4vw, 20px);
-      border-radius: 60px;
-      flex: 1;
-      font-size: clamp(0.85rem, 3vw, 1rem);
-      color: #fff0f0;
-      outline: none;
-      min-width: 0;
-    }
-
-    .input-premium input:focus {
-      box-shadow: 0 0 0 2px #ff4d6d;
-    }
-
-    .input-premium button {
-      background: linear-gradient(95deg, #ff1a4f, #b32eff);
-      border: none;
-      padding: 0 clamp(18px, 5vw, 28px);
-      border-radius: 60px;
-      font-weight: 800;
-      color: white;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-      transition: transform 0.2s;
-      font-size: clamp(0.75rem, 3vw, 0.9rem);
-      white-space: nowrap;
-    }
-
-    .input-premium button:hover {
-      transform: scale(0.97);
-    }
-
-    .code-premium-card {
-      background: linear-gradient(145deg, #0e0e1f, #02020c);
-      border-radius: 48px;
-      padding: 18px 12px;
-      margin: 16px 0 8px;
-      border: 1px solid #ff4d6d;
-      cursor: pointer;
-      transition: 0.2s;
-      word-break: break-word;
-    }
-
-    .code-premium-card:hover {
-      border-color: #2e6eff;
-      transform: translateY(-2px);
-      box-shadow: 0 0 20px rgba(46, 110, 255, 0.3);
-    }
-
-    .code-number-premium {
-      background: #000000aa;
-      padding: 12px 20px;
-      border-radius: 80px;
-      font-size: clamp(1.2rem, 5vw, 1.6rem);
-      font-weight: 800;
-      font-family: monospace;
-      display: inline-block;
-      color: #ffdf6e;
-      word-break: break-all;
-      max-width: 100%;
-    }
-
-    .creator-section {
-      margin-top: 22px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 8px 16px;
-      background: rgba(0, 0, 0, 0.5);
-      border-radius: 60px;
-      backdrop-filter: blur(4px);
-      border: 1px solid rgba(255, 51, 102, 0.3);
-      flex-wrap: wrap;
-    }
-
-    .creator-avatar-small {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      border: 2px solid #ff3366;
-      overflow: hidden;
-      flex-shrink: 0;
-    }
-
-    .creator-avatar-small img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .creator-text {
-      font-size: clamp(0.6rem, 2.5vw, 0.7rem);
-      color: #ffb6c7;
-      letter-spacing: 0.5px;
-    }
-
-    .creator-text span {
-      color: #ffdf6e;
-      font-weight: 600;
-    }
-
-    footer {
-      font-size: clamp(8px, 2.5vw, 9px);
-      margin-top: 16px;
-      opacity: 0.6;
-      color: #aaaaff;
-      word-break: keep-all;
-    }
-
-    @media (max-width: 480px) {
-      .input-premium {
-        flex-direction: row;
-      }
-      .time-panel-premium {
-        justify-content: center;
-      }
-      .premium-card {
-        padding: 20px 16px 24px;
-      }
-      .code-number-premium {
-        font-size: 1rem;
-        padding: 10px 16px;
-      }
-    }
-
-    body, .main-pair-web, .initial-loader-screen {
-      overflow-x: hidden;
-    }
-
-    .copy-notice {
-      font-size: clamp(0.65rem, 2.5vw, 0.7rem);
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-
-    @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(46, 110, 255, 0.4); border-color: #ff4d6d; }
-      70% { box-shadow: 0 0 0 10px rgba(46, 110, 255, 0); border-color: #2e6eff; }
-      100% { box-shadow: 0 0 0 0 rgba(46, 110, 255, 0); border-color: #ff4d6d; }
-    }
-
-    .pair-status {
-      margin-top: 16px;
-      padding: 12px;
-      border-radius: 40px;
-      font-size: clamp(0.75rem, 3vw, 0.85rem);
-      min-height: 50px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-    }
-
-    .pair-status.loading {
-      background: rgba(255, 51, 102, 0.15);
-      border: 1px solid #ff4d6d;
-      color: #ffb6c7;
-    }
-
-    .pair-status.success {
-      background: rgba(46, 110, 255, 0.15);
-      border: 1px solid #2e6eff;
-      color: #90d0ff;
-    }
-
-    .pair-status.error {
-      background: rgba(255, 30, 70, 0.2);
-      border: 1px solid #ff4d6d;
-      color: #ff6b8a;
-    }
-
-    .pair-status .spinner {
-      width: 20px;
-      height: 20px;
-      border: 3px solid #ff3366;
-      border-top-color: transparent;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-    }
-  </style>
+    </style>
 </head>
 <body>
 
-<!-- CINEMATIC INITIAL LOADING SCREEN -->
-<div class="initial-loader-screen" id="initialLoader">
-  <div class="cinematic-loader">
-    <div class="cinema-profile">
-      <img src="https://mc-error-db.pages.dev/VIHAGA%20XMD/Data/zeus.JPG" alt="ZEUS PROFILE" onerror="this.src='https://mc-error-db.pages.dev/VIHAGA%20XMD/Data/zeus.JPG'">
-    </div>
-    
-    <div class="cinema-title">ZEUS X MINI</div>
-    <div class="cinema-sub">PAIRING SYSTEM · SECURE GATEWAY</div>
-    
-    <div class="film-progress">
-      <div class="film-track">
-        <div class="film-fill"></div>
-      </div>
-    </div>
-    
-    <div class="cinema-percent" id="loadingPercent">LOADING 0%</div>
-    
-    <div class="reel-dots">
-      <div class="reel-dot"></div>
-      <div class="reel-dot"></div>
-      <div class="reel-dot"></div>
-      <div class="reel-dot"></div>
-      <div class="reel-dot"></div>
-    </div>
-    
-    <div class="cinema-quote">
-      <i class="fas fa-film"></i> initializing secure systems please wait <i class="fas fa-ticket-alt"></i>
-    </div>
-  </div>
-</div>
+    <div class="stars-container" id="stars"></div>
 
-<!-- MAIN PAIR WEB -->
-<div class="main-pair-web" id="mainPairWeb">
-  <div class="premium-card">
-    <div class="time-panel-premium">
-      <div class="date-premium"><i class="fas fa-map-pin"></i> <span id="slDatePremium">Loading...</span></div>
-      <div class="time-premium"><i class="fas fa-hourglass-half"></i> <span id="slTimePremium">--:--:--</span></div>
+    <div class="glass-box">
+        <h2>ZANTA-MD</h2>
+        <p>Enter your number with country code</p>
+        
+        <input type="number" id="num" placeholder="e.g. 94743404814">
+        
+        <button onclick="getPair()">GET PAIR CODE</button>
+        
+        <div id="code"></div>
+
+        <a href="index.html" class="home-link">← Back to Home</a>
     </div>
 
-    <div class="premium-logo">
-      <i class="fas fa-bolt"></i>
-    </div>
-    <h2>ZEUS X MINI</h2>
-    <div class="sub" style="color:#b0c4ff; margin-bottom: 10px;">WHATSAPP MULTI DEVICE · PAIRING SYSTEM</div>
+    <audio id="bgMusic" loop>
+        <source src="https://files.catbox.moe/5zx7hg.mp3" type="audio/mpeg">
+    </audio>
 
-    <div class="input-premium">
-      <input type="tel" id="phoneNumberPremium" placeholder="+94 XX XXX XXXX" autocomplete="off">
-      <button id="pairBtnPremium"><i class="fas fa-link"></i> PAIR</button>
-    </div>
+    <script>
+        // Stars Logic
+        const starsContainer = document.getElementById('stars');
+        for (let i = 0; i < 80; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            const size = Math.random() * 2.5 + 'px';
+            star.style.width = size; star.style.height = size;
+            star.style.left = Math.random() * 100 + '%';
+            star.style.top = Math.random() * 100 + '%';
+            star.style.animationDuration = Math.random() * 5 + 3 + 's';
+            starsContainer.appendChild(star);
+        }
 
-    <div id="premiumPairArea">
-      <div class="pair-status" style="background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.1); color:#8899bb;">
-        <i class="fas fa-shield-haltered"></i> cinematic mode · ready for pairing
-      </div>
-    </div>
-    
-    <div class="creator-section">
-      <div class="creator-avatar-small">
-        <img src="https://mc-error-db.pages.dev/VIHAGA%20XMD/Data/zeus.JPG" alt="ZEUS INC" onerror="this.src='https://mc-error-db.pages.dev/VIHAGA%20XMD/Data/zeus.JPG'">
-      </div>
-      <div class="creator-text">
-        <i class="fas fa-code"></i> CREATED BY <span>ZEUS INC</span>
-      </div>
-    </div>
-    
-    <footer><i class="fas fa-gem"></i> sri lanka secure gateway · zeus inc</footer>
-  </div>
-</div>
+        // Pairing Logic (As per your request)
+        async function getPair() {
+            const num = document.getElementById('num').value;
+            const codeDiv = document.getElementById('code');
+            if(!num) return alert("Please enter your number!");
+            
+            codeDiv.innerText = "WAITING...";
+            codeDiv.style.fontSize = "1rem";
+            codeDiv.style.letterSpacing = "1px";
 
-<script>
-  // ========== CINEMATIC LOADING WITH PERCENTAGE ==========
-  const loaderScreen = document.getElementById('initialLoader');
-  const mainWeb = document.getElementById('mainPairWeb');
-  const percentSpan = document.getElementById('loadingPercent');
-  
-  let percent = 0;
-  const interval = setInterval(() => {
-    const increment = Math.floor(Math.random() * 12) + 4;
-    percent += increment;
-    if (percent >= 100) {
-      percent = 100;
-      clearInterval(interval);
-      percentSpan.innerText = 'LOADING 100% · READY';
-      setTimeout(() => {
-        loaderScreen.classList.add('hide');
-        mainWeb.classList.add('visible');
-      }, 500);
-    }
-    percentSpan.innerText = `LOADING ${percent}%`;
-  }, 180);
+            try {
+                const res = await fetch(`/code?number=${num}`);
+                const data = await res.json();
+                
+                codeDiv.style.fontSize = "1.8rem";
+                codeDiv.style.letterSpacing = "5px";
+                codeDiv.innerText = data.code || "ERROR";
+            } catch (error) {
+                codeDiv.innerText = "ERROR";
+            }
+        }
 
-  setTimeout(() => {
-    if (!mainWeb.classList.contains('visible')) {
-      clearInterval(interval);
-      loaderScreen.classList.add('hide');
-      mainWeb.classList.add('visible');
-    }
-  }, 4200);
-
-  // ========== SRI LANKA TIME (UTC+5:30) ==========
-  function updateSriLankaPremium() {
-    const now = new Date();
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const slTime = new Date(utc + (5.5 * 3600000));
-    const dateStr = slTime.toLocaleDateString('en-LK', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', timeZone: 'Asia/Colombo' });
-    const timeStr = slTime.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Colombo' });
-    if (document.getElementById('slDatePremium')) {
-      document.getElementById('slDatePremium').innerText = dateStr;
-      document.getElementById('slTimePremium').innerText = timeStr;
-    }
-  }
-  updateSriLankaPremium();
-  setInterval(updateSriLankaPremium, 1000);
-
-  // ========== PAIR WEB FUNCTIONALITY (BACKEND UNCHANGED) ==========
-  const pairArea = document.getElementById("premiumPairArea");
-  const phoneInput = document.getElementById("phoneNumberPremium");
-  const pairBtn = document.getElementById("pairBtnPremium");
-
-  function clearArea() {
-    if (pairArea) pairArea.innerHTML = "";
-  }
-
-  function showLoadingState(message) {
-    clearArea();
-    const loaderDiv = document.createElement("div");
-    loaderDiv.className = "pair-status loading";
-    loaderDiv.innerHTML = `
-      <div class="spinner"></div>
-      <span>${message}</span>
-    `;
-    pairArea.appendChild(loaderDiv);
-  }
-
-  function showError(text) {
-    clearArea();
-    const errDiv = document.createElement("div");
-    errDiv.className = "pair-status error";
-    errDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${text}`;
-    pairArea.appendChild(errDiv);
-  }
-
-  function displayCode(code) {
-    clearArea();
-    const codeCard = document.createElement("div");
-    codeCard.className = "code-premium-card";
-    codeCard.style.animation = "pulse 1.5s ease-in-out";
-    codeCard.innerHTML = `
-      <div style="font-size:0.7rem; color:#ff9faf;"><i class="fas fa-fingerprint"></i> YOUR PAIR CODE</div>
-      <div id="premiumCodeBlock" class="code-number-premium">${escapeHtml(code)}</div>
-      <div class="copy-notice" style="font-size:0.7rem; margin-top:8px;"><i class="far fa-copy"></i> click to copy</div>
-    `;
-    pairArea.appendChild(codeCard);
-    
-    const codeElem = document.getElementById("premiumCodeBlock");
-    codeElem.addEventListener("click", async () => {
-      const original = codeElem.innerText;
-      try {
-        await navigator.clipboard.writeText(original);
-        codeElem.innerText = "✓ COPIED! ✓";
-        codeElem.style.background = "#2ecc71";
-        codeElem.style.color = "white";
-        setTimeout(() => { 
-          codeElem.innerText = original;
-          codeElem.style.background = "#000000aa";
-          codeElem.style.color = "#ffdf6e";
-        }, 1300);
-      } catch(e) { 
-        codeElem.innerText = "⚠️ copy manually";
-        setTimeout(() => { codeElem.innerText = original; }, 1000);
-      }
-    });
-  }
-
-  function escapeHtml(str) {
-    if (!str) return "";
-    return str.replace(/[&<>]/g, function(m) {
-      if (m === '&') return '&amp;';
-      if (m === '<') return '&lt;';
-      if (m === '>') return '&gt;';
-      return m;
-    });
-  }
-
-  function formatPhoneNumber(rawNumber) {
-    const digits = rawNumber.replace(/[^0-9]/g, "");
-    if (!digits.length) return rawNumber;
-    let formatted = "";
-    let temp = "";
-    for (let i = 0; i < digits.length; i++) {
-      temp += digits[i];
-      if (temp.length === 3) {
-        formatted += " " + digits[i];
-      } else if (temp.length === 8) {
-        formatted += " " + digits[i];
-      } else {
-        formatted += digits[i];
-      }
-    }
-    return "+" + formatted;
-  }
-
-  function validateNumber(raw) {
-    let digits = raw.replace(/[^0-9]/g, "");
-    if (!digits.length) return null;
-    if (digits.length < 11) return null;
-    return digits;
-  }
-
-  pairBtn.addEventListener("click", async (e) => {
-    e.preventDefault();
-    let rawVal = phoneInput.value.trim();
-    
-    if (!rawVal) {
-      showError("❗ Enter your WhatsApp number with country code");
-      return;
-    }
-    
-    const cleaned = validateNumber(rawVal);
-    if (!cleaned || cleaned.length < 11) {
-      showError("❌ Invalid number format. Use +94XXXXXXXXX");
-      return;
-    }
-    
-    const formattedDisplay = formatPhoneNumber(cleaned);
-    phoneInput.value = formattedDisplay;
-    
-    showLoadingState(`🔐 pairing +${cleaned} · secure handshake`);
-    await new Promise(r => setTimeout(r, 800));
-    
-    try {
-      // ORIGINAL API CALL: /code?number=${bc} (BACKEND UNCHANGED)
-      const response = await axios.get(`/code?number=${cleaned}`, { timeout: 15000 });
-      let pairCode = response.data?.code || response.data?.pairCode;
-      
-      if (!pairCode || pairCode === "Service Unavailable") {
-        showError("🌙 Service Unavailable. Please retry.");
-      } else {
-        displayCode(pairCode);
-      }
-    } catch (error) {
-      console.error("Pairing error:", error);
-      showError("⚠️ Service Unavailable. Please try again later.");
-    }
-  });
-
-  phoneInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter") pairBtn.click();
-  });
-</script>
+        // Music Trigger
+        window.addEventListener('click', () => {
+            document.getElementById('bgMusic').play();
+        }, { once: true });
+    </script>
 </body>
 </html>
