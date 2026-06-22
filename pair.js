@@ -86,7 +86,7 @@ router.get("/", async (req, res) => {
 *👤 User:* ${user_jid.split('@')[0]}
 *🗄️ Database:* MongoDB Secured 🔒
 
-> ඔබේ දත්ත අපගේ Database එකේ ආරක්ෂිතව තැන්පත් කරන ලදී. දැන් බොට් ස්වයංක්‍රීයව ක්‍රියාත්මක වනු ඇත.
+> ඔබේ දත්ත අපගේ Database එකේ ආරක්ෂිතව තැන්පත් කරන ලදී. දැන් බොට් ස්වයංක්‍රීයව ක්‍රියාත්මක වනු ඇත.මදක් රැදී සිටින්න...
 
 *📢 Join our official channel for updates:*
 https://whatsapp.com/channel/0029VbCe8YW84OmKiJkDfk3o
