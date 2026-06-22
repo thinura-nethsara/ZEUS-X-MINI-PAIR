@@ -12,14 +12,14 @@
   "dependencies": {
     "@whiskeysockets/baileys": "7.0.0-rc13",  
     "qrcode": "^1.5.4",
-    "awesome-phonenumber": "^7.6.0",
-    "pino": "^10.1.0",
-    "phone": "^3.1.69",
-    "body-parser": "^2.2.2",
+    "awesome-phonenumber": "^7.8.0",
+    "pino": "^10.3.1",
+    "phone": "^3.1.71",
+    "body-parser": "^2.3.0",
     "express": "^5.2.1",
     "path": "^0.12.7",
-    "mongoose": "^9.1.2",
-    "pm2": "^6.0.14",
-    "rimraf": "^6.1.2"
+    "mongoose": "^9.7.1",
+    "pm2": "^7.0.1",
+    "rimraf": "^6.1.3"
   }
 }
