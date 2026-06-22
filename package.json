@@ -10,7 +10,7 @@
     "dev": "node index.js"
   },
   "dependencies": {
-    "@whiskeysockets/baileys": "npm:@dnuzi/baileys",  
+    "@whiskeysockets/baileys": "7.0.0-rc13",  
     "qrcode": "^1.5.4",
     "awesome-phonenumber": "^7.6.0",
     "pino": "^10.1.0",
