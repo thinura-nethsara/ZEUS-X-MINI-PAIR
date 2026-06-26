@@ -8,9 +8,12 @@ const PORT = process.env.PORT || 8000;
 // ✅ MongoDB Connection
 const MONGODB_URL = "mongodb+srv://Angle:99999978666@cluster0.ynt3dwp.mongodb.net/";
 
-mongoose.connect(MONGODB_URL)
-    .then(() => console.log('✅ MongoDB Connected Successfully'))
-    .catch(err => console.error('❌ MongoDB Connection Error:', err));
+mongoose.connect(MONGODB_URL, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => console.log('✅ MongoDB Connected Successfully'))
+.catch(err => console.error('❌ MongoDB Connection Error:', err));
 
 // Middleware
 app.use(bodyParser.json());
@@ -35,15 +38,17 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`🚀 ZANTA-MD Web Server started on port ${PORT}`);
 });
 
 // Graceful shutdown
 process.on('SIGINT', () => {
     console.log('🛑 Shutting down server...');
-    mongoose.connection.close(() => {
-        console.log('✅ MongoDB connection closed');
-        process.exit(0);
+    server.close(() => {
+        mongoose.connection.close(() => {
+            console.log('✅ MongoDB connection closed');
+            process.exit(0);
+        });
     });
 });
