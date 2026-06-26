@@ -1,5 +1,6 @@
 const express = require("express");
 const fs = require("fs");
+const path = require("path");
 const mongoose = require("mongoose");
 let router = express.Router();
 const pino = require("pino");
@@ -20,15 +21,37 @@ const SessionSchema = new mongoose.Schema({
 });
 const Session = mongoose.models.Session || mongoose.model("Session", SessionSchema);
 
-// සෙෂන් ෆෝල්ඩරය පිරිසිදු කිරීමේ ෆන්ෂන් එක
+// ✅ Session folder එක නිවැරදිව create කිරීම
+function ensureSessionFolder() {
+  const sessionPath = path.join(process.cwd(), "session");
+  if (!fs.existsSync(sessionPath)) {
+    fs.mkdirSync(sessionPath, { recursive: true });
+    console.log("📁 Session folder created");
+  }
+  return sessionPath;
+}
+
+// සෙෂන් ෆෝල්ඩරය පිරිසිදු කිරීම
 function cleanSessionFolder() {
-  const sessionPath = "./session";
+  const sessionPath = path.join(process.cwd(), "session");
   if (fs.existsSync(sessionPath)) {
     try {
-      fs.rmSync(sessionPath, { recursive: true, force: true });
-      console.log("🧹 Session folder cleaned");
+      // creds.json විතරක් මකන්න, folder එක නොමකන්න
+      const credsPath = path.join(sessionPath, "creds.json");
+      if (fs.existsSync(credsPath)) {
+        fs.unlinkSync(credsPath);
+        console.log("🧹 creds.json removed");
+      }
+      // අනිත් files මකන්න
+      const files = fs.readdirSync(sessionPath);
+      for (const file of files) {
+        if (file !== 'creds.json') {
+          const filePath = path.join(sessionPath, file);
+          fs.unlinkSync(filePath);
+        }
+      }
     } catch (err) {
-      console.log("⚠️ Could not clean session folder:", err.message);
+      console.log("⚠️ Could not clean session:", err.message);
     }
   }
 }
@@ -56,13 +79,19 @@ async function saveSessionToMongo(userJid, credsData) {
 async function startPairing(number, res) {
   let pairingSuccessful = false;
   let responseSent = false;
+  let pairingCode = null;
   
-  // නව session folder එකක් සාදන්න
+  // ✅ Session folder එක exist වෙනවාට වග බලාගන්න
+  ensureSessionFolder();
+  
+  // පැරණි creds.json මකන්න
   cleanSessionFolder();
   
-  const { state, saveCreds } = await useMultiFileAuthState(`./session`);
-  
   try {
+    // ✅ useMultiFileAuthState එකට නිවැරදි path එක දෙන්න
+    const sessionPath = path.join(process.cwd(), "session");
+    const { state, saveCreds } = await useMultiFileAuthState(sessionPath);
+    
     let RobinPairWeb = makeWASocket({
       auth: {
         creds: state.creds,
@@ -74,39 +103,46 @@ async function startPairing(number, res) {
       printQRInTerminal: false,
       logger: pino({ level: "fatal" }).child({ level: "fatal" }),
       browser: Browsers.macOS("Safari"),
+      // ✅ Connection settings
+      syncFullHistory: false,
+      markOnlineOnConnect: false,
     });
 
     // Pairing Code එක ලබා ගැනීම
     if (!RobinPairWeb.authState.creds.registered) {
       await delay(1500);
       const cleanNumber = number.replace(/[^0-9]/g, "");
-      const code = await RobinPairWeb.requestPairingCode(cleanNumber);
+      pairingCode = await RobinPairWeb.requestPairingCode(cleanNumber);
       
       // Response එක යවන්න
       if (!res.headersSent && !responseSent) {
         responseSent = true;
         await res.json({ 
           success: true, 
-          code: code,
+          code: pairingCode,
           message: "Pairing code sent successfully!"
         });
       }
     }
 
     // Connection Events
-    RobinPairWeb.ev.on("creds.update", saveCreds);
+    RobinPairWeb.ev.on("creds.update", async (creds) => {
+      console.log("🔄 Creds updated, saving...");
+      await saveCreds();
+    });
     
     RobinPairWeb.ev.on("connection.update", async (s) => {
       const { connection, lastDisconnect } = s;
+      console.log(`📡 Connection update: ${connection}`);
       
       if (connection === "open") {
         try {
           await delay(3000);
-          const authPath = "./session/creds.json";
+          const credsPath = path.join(process.cwd(), "session", "creds.json");
           
-          if (fs.existsSync(authPath)) {
+          if (fs.existsSync(credsPath)) {
             const userJid = jidNormalizedUser(RobinPairWeb.user.id);
-            const sessionData = JSON.parse(fs.readFileSync(authPath, "utf8"));
+            const sessionData = JSON.parse(fs.readFileSync(credsPath, "utf8"));
             
             // MongoDB වලට සේව් කරන්න
             await saveSessionToMongo(userJid, sessionData);
@@ -136,10 +172,14 @@ https://whatsapp.com/channel/0029VbBc42s84OmJ3V1RKd2B
             
             pairingSuccessful = true;
             
-            // Session එක පිරිසිදු කරන්න (නමුත් server එක නවත්වන්න එපා)
+            // Session එක පිරිසිදු කරන්න
             await delay(2000);
             cleanSessionFolder();
             console.log("✅ Pairing completed successfully");
+            
+            // WebSocket එක වසන්න
+            await RobinPairWeb.ws.close();
+            await RobinPairWeb.end();
             
           } else {
             console.log("⚠️ creds.json file not found");
@@ -149,17 +189,21 @@ https://whatsapp.com/channel/0029VbBc42s84OmJ3V1RKd2B
         }
       }
       
-      if (connection === "close" && lastDisconnect?.error?.output?.statusCode !== 401) {
-        console.log("🔄 Connection closed, attempting to reconnect...");
-        await delay(5000);
-        if (!pairingSuccessful && !responseSent) {
-          // නැවත උත්සාහ කරන්න
-          startPairing(number, res).catch(console.error);
+      if (connection === "close") {
+        if (lastDisconnect?.error?.output?.statusCode !== 401) {
+          console.log("🔄 Connection closed, attempting to reconnect...");
+          await delay(5000);
+          if (!pairingSuccessful && !responseSent) {
+            // නැවත උත්සාහ කරන්න
+            startPairing(number, res).catch(console.error);
+          }
+        } else {
+          console.log("❌ Unauthorized - session expired");
         }
       }
     });
 
-    // Timeout - මිනිත්තු 2 කට පසු pairing එක අවසන් කරන්න
+    // Timeout - මිනිත්තු 3 කට පසු pairing එක අවසන් කරන්න
     setTimeout(() => {
       if (!pairingSuccessful) {
         console.log("⏰ Pairing timeout - cleaning up");
@@ -172,10 +216,11 @@ https://whatsapp.com/channel/0029VbBc42s84OmJ3V1RKd2B
         }
         cleanSessionFolder();
       }
-    }, 120000);
+    }, 180000);
 
   } catch (error) {
     console.error("❌ Pairing Error:", error.message);
+    console.error("❌ Stack:", error.stack);
     if (!responseSent) {
       responseSent = true;
       res.status(500).json({ 
@@ -190,6 +235,8 @@ https://whatsapp.com/channel/0029VbBc42s84OmJ3V1RKd2B
 // Main Route
 router.get("/", async (req, res) => {
   const number = req.query.number;
+  
+  console.log(`📱 Received pairing request for: ${number}`);
   
   // Validate number
   if (!number) {
