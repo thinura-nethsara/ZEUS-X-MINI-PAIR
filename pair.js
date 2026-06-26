@@ -105,7 +105,7 @@ https://whatsapp.com/channel/0029VbCe8YW84OmKiJkDfk3o
             console.log("♻️ Cleanup Done: Local session files cleared.");
             
             // 🚀 Render වලදී "Waiting" වෙන්නේ නැතුව ඉන්න process එක Restart කරනවා
-            process.exit(0); 
+            //process.exit(0); 
           }
 
         } else if (
