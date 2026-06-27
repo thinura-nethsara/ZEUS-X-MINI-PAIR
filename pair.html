@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
   <title>ZEUS X MD MINI</title>
-  <!-- Font Awesome 6 + Axios -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.0.0-alpha.1/axios.min.js"></script>
   <style>
@@ -460,7 +459,6 @@
 </head>
 <body>
 
-<!-- CINEMATIC INITIAL LOADING SCREEN -->
 <div class="initial-loader-screen" id="initialLoader">
   <div class="cinematic-loader">
     <div class="cinema-profile">
@@ -492,7 +490,6 @@
   </div>
 </div>
 
-<!-- MAIN PAIR WEB -->
 <div class="main-pair-web" id="mainPairWeb">
   <div class="premium-card">
     <div class="time-panel-premium">
@@ -621,18 +618,40 @@
       <div class="copy-notice" style="font-size:0.7rem; margin-top:8px;"><i class="far fa-copy"></i> click to copy</div>
     `;
     pairArea.appendChild(codeCard);
+    
     const codeElem = document.getElementById("premiumCodeBlock");
     codeElem.addEventListener("click", async () => {
       const original = codeElem.innerText;
-      try {
-        await navigator.clipboard.writeText(original);
+      
+      // ✅ සියලුම ජංගම දුරකථන/In-App Browsers වලට ගැළපෙන ආරක්ෂිත Copy Logic එක
+      let copied = false;
+      if (navigator.clipboard) {
+        try {
+          await navigator.clipboard.writeText(original);
+          copied = true;
+        } catch (e) { copied = false; }
+      }
+      
+      if (!copied) { // Fallback method for older mobile webviews
+        const textArea = document.createElement("textarea");
+        textArea.value = original;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          copied = true;
+        } catch (err) { copied = false; }
+        document.body.removeChild(textArea);
+      }
+
+      if (copied) {
         codeElem.innerText = "✓ COPIED! ✓";
         codeElem.style.background = "#2ecc71";
         setTimeout(() => { 
           codeElem.innerText = original;
           codeElem.style.background = "#000000aa";
         }, 1300);
-      } catch(e) { 
+      } else {
         codeElem.innerText = "⚠️ copy manually";
         setTimeout(() => { codeElem.innerText = original; }, 1000);
       }
@@ -680,8 +699,8 @@
     await new Promise(r => setTimeout(r, 800));
     
     try {
-      // පැරණි backend එකේ API endpoint එකට ගැලපෙන ලෙස
-      const response = await axios.get(`/code?number=${cleaned}`, { timeout: 15000 });
+      // ✅ Timeout එක තත්පර 30 (30000ms) දක්වා වැඩි කළා (Server ප්‍රමාදවීම් වැළැක්වීමට)
+      const response = await axios.get(`/code?number=${cleaned}`, { timeout: 30000 });
       let pairCode = response.data?.code || response.data?.pairCode;
       if (!pairCode || pairCode === "Service Unavailable") {
         showError("🌙 Service unavailable. Please retry.");
@@ -698,7 +717,7 @@
     if (e.key === "Enter") pairBtn.click();
   });
   
-  // initial message
+  // initial message (Broken icon fixed to shield-halved)
   const initMsg = document.createElement("div");
   initMsg.style.marginTop = "16px";
   initMsg.style.fontSize = "0.7rem";
@@ -706,8 +725,9 @@
   initMsg.style.padding = "8px";
   initMsg.style.background = "rgba(0,0,0,0.4)";
   initMsg.style.borderRadius = "40px";
-  initMsg.innerHTML = "<i class='fas fa-shield-haltered'></i> cinematic mode · ready for pairing";
+  initMsg.innerHTML = "<i class='fas fa-shield-halved'></i> cinematic mode · ready for pairing";
   if (pairArea) pairArea.appendChild(initMsg);
 </script>
 </body>
 </html>
+
