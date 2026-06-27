@@ -1,9 +1,9 @@
 const express = require("express");
 const fs = require("fs");
-const { exec } = require("child_process");
 const mongoose = require("mongoose");
 let router = express.Router();
 const pino = require("pino");
+const { v4: uuidv4 } = require("uuid"); // ✅ එක් එක් යූසර්ට වෙනම ID එකක් හදන්න (npm install uuid කරගන්න)
 const {
   default: makeWASocket,
   useMultiFileAuthState,
@@ -21,19 +21,28 @@ const SessionSchema = new mongoose.Schema({
 });
 const Session = mongoose.models.Session || mongoose.model("Session", SessionSchema);
 
-// ✅ බලෙන්ම මකන්න පුළුවන් වෙන්න හදපු removeFile එක
+// ✅ හරියටම අදාළ folder එක විතරක් මකන function එක
 function removeFile(FilePath) {
-  if (!fs.existsSync(FilePath)) return false;
-  fs.rmSync(FilePath, { recursive: true, force: true });
+  if (fs.existsSync(FilePath)) {
+    fs.rmSync(FilePath, { recursive: true, force: true });
+  }
 }
 
 router.get("/", async (req, res) => {
   let num = req.query.number;
+  if (!num) return res.status(400).send({ error: "Number is required" });
+
+  // ✅ හැම රික්වෙස්ට් එකකටම රන්ඩම් ID එකක් හදනවා (උදා: ./session-abc123xyz)
+  const uniqueSessionId = `session-${uuidv4()}`;
+  const sessionFolder = `./${uniqueSessionId}`;
+
   async function RobinPair() {
-    // එක් එක් රික්වෙස්ට් එකට ෆයිල් එකක් හැදෙනවා
-    const { state, saveCreds } = await useMultiFileAuthState(`./session`);
+    // ✅ දැන් හැමෝටම තනි තනි ෆෝල්ඩර් එකක් ලැබෙනවා
+    const { state, saveCreds } = await useMultiFileAuthState(sessionFolder);
+    let RobinPairWeb = null;
+
     try {
-      let RobinPairWeb = makeWASocket({
+      RobinPairWeb = makeWASocket({
         auth: {
           creds: state.creds,
           keys: makeCacheableSignalKeyStore(
@@ -43,7 +52,7 @@ router.get("/", async (req, res) => {
         },
         printQRInTerminal: false,
         logger: pino({ level: "fatal" }).child({ level: "fatal" }),
-        browser: Browsers.macOS("Safari"), // ඔයා මුලින් දුන්න එකමයි
+        browser: Browsers.macOS("Safari"),
       });
 
       if (!RobinPairWeb.authState.creds.registered) {
@@ -56,56 +65,40 @@ router.get("/", async (req, res) => {
       }
 
       RobinPairWeb.ev.on("creds.update", saveCreds);
+      
       RobinPairWeb.ev.on("connection.update", async (s) => {
         const { connection, lastDisconnect } = s;
+        
         if (connection === "open") {
           try {
-            await delay(10000);
-            const auth_path = "./session/creds.json";
+            await delay(5000);
+            const auth_path = `${sessionFolder}/creds.json`;
             const user_jid = jidNormalizedUser(RobinPairWeb.user.id);
 
             // 1. MongoDB එකට සේව් කිරීම
-            const session_json = JSON.parse(fs.readFileSync(auth_path, "utf8"));
-            await Session.findOneAndUpdate(
-              { number: user_jid },
-              {
-                number: user_jid,
-                creds: session_json
-              },
-              { upsert: true }
-            );
+            if (fs.existsSync(auth_path)) {
+              const session_json = JSON.parse(fs.readFileSync(auth_path, "utf8"));
+              await Session.findOneAndUpdate(
+                { number: user_jid },
+                { number: user_jid, creds: session_json },
+                { upsert: true }
+              );
+              console.log(`✅ Session securely stored in MongoDB for ${user_jid}`);
+            }
 
-            console.log(`✅ Session securely stored in MongoDB for ${user_jid}`);
-
-            // 2. මැසේජ් එක (Plain Text Only - Error නොවී යන්න)
-            const success_msg = `╔════════════════════╗
-   ZEUS X NOW ONLINE
-╚════════════════════╝
-
-*🚀 Status:* Successfully Linked ✅
-*👤 User:* ${user_jid.split('@')[0]}
-*🗄️ Database:* MongoDB Secured 🔒
-
-> ඔබේ දත්ත අපගේ Database එකේ ආරක්ෂිතව තැන්පත් කරන ලදී. දැන් බොට් ස්වයංක්‍රීයව ක්‍රියාත්මක වනු ඇත.මදක් රැදී සිටින්න...
-
-*📢 Join our official channel for updates:*
-https://whatsapp.com/channel/0029VbCe8YW84OmKiJkDfk3o
-
-𝐏𝐎𝐖𝐄𝐑𝐄𝐃 𝐁𝐘 𝐙𝐄𝐔𝐒 𝐈𝐍𝐂 </>`;
-
-            // ❌ Image සහ Ad Card එක අයින් කළා, Text විතරක් යැවෙනවා
+            // 2. මැසේජ් එක යැවීම
+            const success_msg = `╔════════════════════╗\n   ZEUS X NOW ONLINE\n╚════════════════════╝\n\n*🚀 Status:* Successfully Linked ✅\n*👤 User:* ${user_jid.split('@')[0]}\n*🗄️ Database:* MongoDB Secured 🔒\n\n> ඔබේ දත්ත අපගේ Database එකේ ආරක්ෂිතව තැන්පත් කරන ลදී. දැන් බොට් ස්වයංක්‍රීයව ක්‍රියාත්මක වනු ඇත.\n\n*📢 Join our official channel for updates:*\nhttps://whatsapp.com/channel/0029VbCe8YW84OmKiJkDfk3o\n\n𝐏𝐎𝐖𝐄𝐑𝐄𝐃 𝐁𝐘 𝐙𝐄𝐔𝐒 𝐈𝐍𝐂 </>\n_Generated via ZEUS-X-PAIR_`;
+            
             await RobinPairWeb.sendMessage(user_jid, { text: success_msg });
 
           } catch (e) {
             console.error("❌ Database or Messaging Error:", e);
           } finally {
-            // 3. Cleanup & Restart
+            // 3. Cleanup - අදාළ යූසර්ගේ ෆෝල්ඩර් එක විතරක් මකනවා
             await delay(2000);
-            removeFile("./session");
-            console.log("♻️ Cleanup Done: Local session files cleared.");
-            
-            // 🚀 Render වලදී "Waiting" වෙන්නේ නැතුව ඉන්න process එක Restart කරනවා
-            //process.exit(0); 
+            if(RobinPairWeb) RobinPairWeb.logout(); // connection එක වහනවා
+            removeFile(sessionFolder);
+            console.log(`♻️ Cleanup Done: Local folder ${sessionFolder} cleared.`);
           }
 
         } else if (
@@ -120,10 +113,11 @@ https://whatsapp.com/channel/0029VbCe8YW84OmKiJkDfk3o
       });
     } catch (err) {
       console.log("Service Error:", err);
-      RobinPair();
+      removeFile(sessionFolder); // Error එකක් ආවොත් folder එක අයින් කරනවා
     }
   }
-  return await RobinPair();
+  
+  await RobinPair();
 });
 
 module.exports = router;
