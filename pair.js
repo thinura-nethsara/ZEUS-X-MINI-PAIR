@@ -1,17 +1,18 @@
-const express = require("express");
-const fs = require("fs");
-const mongoose = require("mongoose");
-let router = express.Router();
-const pino = require("pino");
-const { v4: uuidv4 } = require("uuid");
-const {
-  default: makeWASocket,
+import express from "express";
+import fs from "fs";
+import mongoose from "mongoose";
+import pino from "pino";
+import { v4 as uuidv4 } from "uuid";
+import {
+  default as makeWASocket,
   useMultiFileAuthState,
   delay,
   makeCacheableSignalKeyStore,
   Browsers,
   jidNormalizedUser,
-} = require("@whiskeysockets/baileys");
+} from "@whiskeysockets/baileys";
+
+const router = express.Router();
 
 // MongoDB Session Schema
 const SessionSchema = new mongoose.Schema({
@@ -114,4 +115,4 @@ router.get("/", async (req, res) => {
   await RobinPair();
 });
 
-module.exports = router;
+export default router;
