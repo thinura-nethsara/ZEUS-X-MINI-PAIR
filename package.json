@@ -10,8 +10,9 @@
     "restart": "pm2 restart Robin",
     "dev": "node index.js"
   },
+  "type": "module",
   "dependencies": {
-    "@whiskeysockets/baileys": "7.0.0-rc13",  
+    "@whiskeysockets/baileys": "7.0.0-rc13",
     "qrcode": "^1.5.4",
     "awesome-phonenumber": "^7.8.0",
     "pino": "^10.3.1",
@@ -22,6 +23,7 @@
     "mongoose": "^9.7.1",
     "pm2": "^7.0.1",
     "rimraf": "^6.1.3",
-    "uuid": "^10.0.0" 
+    "uuid": "^10.0.0",
+    "fs-extra": "^11.2.0"
   }
 }
