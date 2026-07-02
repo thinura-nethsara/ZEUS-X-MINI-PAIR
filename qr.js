@@ -38,10 +38,8 @@ router.get("/", async (req, res) => {
   let connectionEstablished = false;
 
   try {
-    // ✅ Latest Baileys version එක fetch කරනවා
-    const { version, isLatest } = await fetchLatestBaileysVersion();
-    console.log(`🔹 Using Baileys version: ${version}`);
-
+    console.log(`🔹 Starting QR session: ${uniqueSessionId}`);
+    
     const { state, saveCreds } = await useMultiFileAuthState(sessionFolder);
     
     const RobinQR = makeWASocket({
@@ -49,34 +47,40 @@ router.get("/", async (req, res) => {
         creds: state.creds,
         keys: makeCacheableSignalKeyStore(
           state.keys,
-          pino({ level: "fatal" }).child({ level: "fatal" })
+          pino({ level: "silent" })
         ),
       },
-      printQRInTerminal: false,
-      logger: pino({ level: "fatal" }).child({ level: "fatal" }),
+      printQRInTerminal: true, // Terminal එකේත් print වෙන්න
+      logger: pino({ level: "silent" }),
       browser: Browsers.macOS("Safari"),
-      // ✅ QR error fix - additional options
-      version: version,
       syncFullHistory: false,
-      markOnlineOnConnect: true,
+      markOnlineOnConnect: false,
       connectTimeoutMs: 60000,
       defaultQueryTimeoutMs: 60000,
       keepAliveIntervalMs: 10000,
-      generateHighQualityLinkPreview: false,
     });
 
+    // Creds update event
     RobinQR.ev.on("creds.update", saveCreds);
 
-    RobinQR.ev.on("connection.update", async (s) => {
-      const { connection, qr, lastDisconnect, isNewLogin } = s;
+    // QR Code event - මෙය වැදගත්ම කොටස
+    RobinQR.ev.on("connection.update", async (update) => {
+      const { connection, qr, lastDisconnect, isNewLogin } = update;
 
-      console.log("📡 Connection Update:", { connection, isNewLogin });
+      console.log("📡 Update:", { connection, hasQR: !!qr, isNewLogin });
 
-      // ✅ QR code generate වෙනවා
+      // QR code එක ලැබුණු විට
       if (qr && !qrSent && !connectionEstablished) {
         qrSent = true;
+        console.log("✅ QR Code generated successfully");
+        
         try {
-          const qrImage = await qrcode.toDataURL(qr);
+          // QR code එක base64 image එකක් විදියට convert කරනවා
+          const qrImage = await qrcode.toDataURL(qr, {
+            errorCorrectionLevel: 'H',
+            margin: 2,
+            scale: 8,
+          });
           
           if (!res.headersSent) {
             res.status(200).json({
@@ -84,29 +88,32 @@ router.get("/", async (req, res) => {
               qr: qrImage,
               message: "Scan this QR code with WhatsApp mobile app",
               sessionId: uniqueSessionId,
-              version: version
+              timestamp: new Date().toISOString()
             });
           }
         } catch (qrError) {
-          console.error("QR Generation Error:", qrError);
+          console.error("❌ QR Generation Error:", qrError);
           if (!res.headersSent) {
             res.status(500).json({
               success: false,
-              error: "Failed to generate QR code"
+              error: "Failed to generate QR code: " + qrError.message
             });
           }
         }
         return;
       }
 
-      // ✅ Connection open වෙනවා
+      // Connection open වෙනවා - QR scan කළා
       if (connection === "open" && !connectionEstablished) {
         connectionEstablished = true;
+        console.log("✅ WhatsApp connection established!");
+        
         try {
           await delay(3000);
           const auth_path = `${sessionFolder}/creds.json`;
           const user_jid = jidNormalizedUser(RobinQR.user.id);
 
+          // MongoDB එකට save කරනවා
           if (fs.existsSync(auth_path)) {
             const session_json = JSON.parse(fs.readFileSync(auth_path, "utf8"));
             await Session.findOneAndUpdate(
@@ -114,67 +121,68 @@ router.get("/", async (req, res) => {
               { number: user_jid, creds: session_json },
               { upsert: true }
             );
-            console.log(`✅ QR Session stored for ${user_jid}`);
+            console.log(`✅ QR Session saved to MongoDB for ${user_jid}`);
           }
 
-          // ✅ Send success message
+          // Success message එක send කරනවා
           const success_msg = `╔════════════════════╗\n   ZEUS X NOW ONLINE (QR)\n╚════════════════════╝\n\n*🚀 Status:* Successfully Linked ✅\n*👤 User:* ${user_jid.split('@')[0]}\n*🗄️ Database:* MongoDB Secured 🔒\n*📱 Method:* QR Code\n\n> ඔබේ දත්ත අපගේ Database එකේ ආරක්ෂිතව තැන්පත් කරනවා.\n\n*📢 Join our official channel:*\nhttps://whatsapp.com/channel/0029VbCe8YW84OmKiJkDfk3o\n\n𝐏𝐎𝐖𝐄𝐑𝐄𝐃 𝐁𝐘 𝐙𝐄𝐔𝐒 𝐈𝐍𝐂`;
           
           await RobinQR.sendMessage(user_jid, { text: success_msg });
+          console.log("✅ Success message sent to user");
 
         } catch (e) {
           console.error("❌ Database or Messaging Error:", e);
         } finally {
-          await delay(3000);
-          if(RobinQR) RobinQR.logout();
+          // Cleanup - session folder එක delete කරනවා
+          await delay(2000);
+          if(RobinQR) {
+            try { await RobinQR.logout(); } catch(e) {}
+          }
           removeFile(sessionFolder);
           console.log(`♻️ Cleanup Done: ${sessionFolder}`);
         }
       }
 
-      // ❌ Connection error
+      // Connection close වෙනවා
       if (connection === "close") {
         const statusCode = lastDisconnect?.error?.output?.statusCode;
         console.log("❌ Connection closed with status:", statusCode);
         
-        if (statusCode !== 401) {
-          // Not logged out - try to reconnect
-          console.log("🔄 Attempting to reconnect...");
-          await delay(5000);
-          // Reconnection logic
-        } else {
-          console.log("🔐 Logged out - QR needed again");
+        if (statusCode === 401) {
+          console.log("🔐 Unauthorized - need new QR");
+          // QR sent කරලා නැත්නම් error response එක
           if (!qrSent && !res.headersSent) {
-            // Send error response
             res.status(401).json({
               success: false,
-              error: "Session expired. Please try again.",
+              error: "Session expired. Please generate new QR.",
               requireNewQR: true
             });
           }
         }
-        // Cleanup
+        
+        // Connection established නැතිව close වුණොත් cleanup
         if (!connectionEstablished) {
           removeFile(sessionFolder);
         }
       }
     });
 
-    // ✅ Timeout - තත්පර 90
+    // Timeout - තත්පර 90
     timeoutId = setTimeout(() => {
       if (!res.headersSent && !connectionEstablished) {
+        console.log("⏰ QR generation timeout");
         res.status(408).json({
           success: false,
           error: "QR Code generation timeout. Please try again.",
           timeout: true
         });
-        RobinQR.logout();
+        try { RobinQR.logout(); } catch(e) {}
         removeFile(sessionFolder);
       }
     }, 90000);
 
   } catch (err) {
-    console.error("QR Service Error:", err);
+    console.error("❌ QR Service Error:", err);
     if (!res.headersSent) {
       res.status(500).json({
         success: false,
