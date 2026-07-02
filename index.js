@@ -1,14 +1,18 @@
-const express = require('express');
-const path = require('path');
-const bodyParser = require("body-parser");
-const mongoose = require('mongoose');
+import express from 'express';
+import path from 'path';
+import bodyParser from 'body-parser';
+import mongoose from 'mongoose';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ✅ MongoDB Connection
+// MongoDB Connection
 const MONGODB_URL = "mongodb+srv://Angle:99999978666@cluster0.ynt3dwp.mongodb.net/";
 
-// MongoDB Connection
 mongoose.connect(MONGODB_URL)
     .then(() => console.log('✅ MongoDB Connected Successfully'))
     .catch(err => console.error('❌ MongoDB Connection Error:', err));
@@ -17,11 +21,11 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Existing pair router
-let codeRouter = require('./pair'); 
+import codeRouter from './pair.js';
 app.use('/code', codeRouter);
 
-// ✅ New QR router
-let qrRouter = require('./qr');
+// QR router
+import qrRouter from './qr.js';
 app.use('/qr', qrRouter);
 
 app.get('/', (req, res) => {
